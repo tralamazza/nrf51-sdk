@@ -4,17 +4,20 @@ DEFINES+= NRF51 NRF51822_QFAA_CA
 SDKINCDIRS+= . gcc sd_common app_common
 
 SDKSRCS+= templates/gcc/gcc_startup_nrf51.s templates/system_nrf51.c
+USE_SOFTDEVICE?= s110
 
-
-SDKDIR?= nrf51-sdk
-SDDIR?= nrf51-s120
+SDKDIR?= $(abspath $(dir $(lastword ${MAKEFILE_LIST})))
+ifndef SDDIR
+SDKINCDIRS+= ${USE_SOFTDEVICE}
+else
+CFLAGS+= -I${SDDIR}/include
+endif
 
 
 CPPFLAGS+= $(patsubst %,-D%,${DEFINES})
 
 CFLAGS+= -I${SDKDIR}/relayr/include
 CFLAGS+= $(patsubst %,-I${SDKDIR}/nrf51822/Include/%,${SDKINCDIRS})
-CFLAGS+= -I${SDDIR}/include
 CFLAGS+= -mcpu=cortex-m0 -mfloat-abi=soft -mthumb -mabi=aapcs	\
 	-ffunction-sections -fdata-sections -fno-builtin
 CFLAGS+= -std=gnu11
