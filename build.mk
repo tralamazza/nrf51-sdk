@@ -75,5 +75,19 @@ ${PROG}.elf: ${OBJS}
 
 %.hex: %.elf
 	${OBJCOPY} -O ihex $< $@
+
+%.jlink: %.hex
+	printf " \
+	loadbin %s,16000\n \
+	r\n \
+	g\n \
+	exit\n" $< > $@
+
+flash: ${PROG}.hex ${PROG}.jlink
+	JLinkExe -device nRF51822_xxAA -if SWD ${PROG}.jlink
+
+gdbserver: ${PROG}.elf
+	JLinkGDBServer -device nRF51822_xxAA -if SWD
+
 clean:
-	-rm -f ${OBJS} ${OBJS:.o=.d} ${PROG}.hex ${PROG}.elf ${PROG}.map
+	-rm -f ${OBJS} ${OBJS:.o=.d} ${PROG}.hex ${PROG}.elf ${PROG}.map ${PROG}.jlink
