@@ -19,7 +19,8 @@ CPPFLAGS+= $(patsubst %,-D%,${DEFINES})
 CFLAGS+= -I${SDKDIR}/relayr/include
 CFLAGS+= $(patsubst %,-I${SDKDIR}/nrf51822/Include/%,${SDKINCDIRS})
 CFLAGS+= -mcpu=cortex-m0 -mfloat-abi=soft -mthumb -mabi=aapcs	\
-	-ffunction-sections -fdata-sections -fno-builtin
+	-ffunction-sections -fdata-sections -fno-builtin \
+	-fplan9-extensions
 CFLAGS+= -std=gnu11
 CFLAGS+= -Wall -Wno-main
 CFLAGS+= -g
