@@ -77,11 +77,12 @@ ${PROG}.elf: ${OBJS}
 	${OBJCOPY} -O ihex $< $@
 
 %.jlink: %.hex
-	printf " \
-	loadbin %s,16000\n \
+	objdump -h $< | \
+	awk '$$1 ~ /^[0-9]+$$/ {addr="0x"$$5; if (!min || addr < min) min = addr} END { printf "\
+	loadbin %s,%s\n \
 	r\n \
 	g\n \
-	exit\n" $< > $@
+	exit\n", f, min}' f="$<" > $@
 
 flash: ${PROG}.hex ${PROG}.jlink
 	JLinkExe -device nRF51822_xxAA -if SWD ${PROG}.jlink
