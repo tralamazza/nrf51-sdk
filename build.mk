@@ -5,6 +5,7 @@ SDKINCDIRS+= . gcc sd_common app_common
 
 SDKSRCS+= templates/gcc/gcc_startup_nrf51.s templates/system_nrf51.c
 USE_SOFTDEVICE?= s110
+SOFTDEV_HEX?= $(lastword $(wildcard ${USE_SOFTDEVICE}_nrf51822_*_softdevice.hex))
 
 SDKDIR?= $(abspath $(dir $(lastword ${MAKEFILE_LIST})))
 ifndef SDDIR
@@ -79,13 +80,26 @@ ${PROG}.elf: ${OBJS}
 %.jlink: %.hex
 	objdump -h $< | \
 	awk '$$1 ~ /^[0-9]+$$/ {addr="0x"$$5; if (!min || addr < min) min = addr} END { printf "\
-	loadbin %s,%s\n \
-	r\n \
-	g\n \
+	loadbin %s,%s\n\
+	r\n\
+	g\n\
 	exit\n", f, min}' f="$<" > $@
+
+%-all.jlink: %.jlink ${SOFTDEV_HEX}
+	printf "\
+	device NRF51822_XXAA\n\
+	halt\n\
+	w4 0x4001e504,2	# enable erase: CONFIG.WEN = EEN\n\
+	w4 0x4001e50c,1 # erase all: ERASEALL = 1\n\
+	sleep 1\n\
+	loadbin %s,0\n" ${SOFTDEV_HEX} > $@
+	cat $< >> $@
 
 flash: ${PROG}.hex ${PROG}.jlink
 	JLinkExe -device nRF51822_xxAA -if SWD ${PROG}.jlink
+
+flash-all: ${PROG}.hex ${SOFTDEV_HEX} ${PROG}-all.jlink
+	JLinkExe -device nRF51822_xxAA -if SWD ${PROG}-all.jlink
 
 gdbserver: ${PROG}.elf
 	JLinkGDBServer -device nRF51822_xxAA -if SWD
