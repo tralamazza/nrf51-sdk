@@ -28,9 +28,9 @@ CFLAGS+= -g
 
 LINKERSCRIPT?= gcc_nrf51_${USE_SOFTDEVICE}_${DEVICE_VARIANT}.ld
 
-#LDFLAGS+= -nodefaultlibs
-LDFLAGS+= -Wl,--gc-sections -fwhole-program
+LDFLAGS+= -Wl,--gc-sections -fwhole-program --specs=nano.specs
 LDFLAGS+= -Wl,-Map=${PROG}.map
+LDFLAGS+= -Wl,-T,${SDKDIR}/relayr/ld/libc-nano.ld
 LDFLAGS+= -Wl,-L${SDKDIR}/nrf51822/Source/templates/gcc
 LDFLAGS+= -Wl,-T,${LINKERSCRIPT}
 
