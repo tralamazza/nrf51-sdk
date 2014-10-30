@@ -78,7 +78,7 @@ ${PROG}.elf: ${OBJS}
 	${OBJCOPY} -O ihex $< $@
 
 %.jlink: %.hex
-	objdump -h $< | \
+	arm-none-eabi-objdump -h $< | \
 	awk '$$1 ~ /^[0-9]+$$/ {addr="0x"$$5; if (!min || addr < min) min = addr} END { printf "\
 	loadbin %s,%s\n\
 	r\n\
