@@ -105,4 +105,4 @@ gdbserver: ${PROG}.elf
 	JLinkGDBServer -device nRF51822_xxAA -if SWD
 
 clean:
-	-rm -f ${OBJS} ${OBJS:.o=.d} ${PROG}.hex ${PROG}.elf ${PROG}.map ${PROG}.jlink
+	-rm -f ${OBJS} ${OBJS:.o=.d} ${PROG}.hex ${PROG}.elf ${PROG}.map ${PROG}.jlink ${PROG}-all.jlink
