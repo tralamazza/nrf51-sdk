@@ -1,24 +1,26 @@
 DEVICE_VARIANT?= xxaa
 
 DEFINES+= NRF51 NRF51822_QFAA_CA
-SDKINCDIRS+= . gcc sd_common app_common
+SDKINCDIRS+= toolchain toolchain/gcc drivers_nrf/hal
 
-SDKSRCS+= templates/gcc/gcc_startup_nrf51.s templates/system_nrf51.c
+SDKSRCS+= toolchain/gcc/gcc_startup_nrf51.s toolchain/system_nrf51.c
 USE_SOFTDEVICE?= s110
 SOFTDEV_HEX?= $(lastword $(wildcard ${USE_SOFTDEVICE}_nrf51822_*_softdevice.hex))
 
 SDKDIR?= $(abspath $(dir $(lastword ${MAKEFILE_LIST})))
 ifndef SDDIR
-SDKINCDIRS+= ${USE_SOFTDEVICE}
+SDKINCDIRS+= softdevice/${USE_SOFTDEVICE}/headers
 else
 CFLAGS+= -I${SDDIR}/include
 endif
+
+SDKINCDIRS+= $(dir ${SDKSRCS})
 
 
 CPPFLAGS+= $(patsubst %,-D%,${DEFINES})
 
 CFLAGS+= -I${SDKDIR}/relayr/include
-CFLAGS+= $(patsubst %,-I${SDKDIR}/nrf51822/Include/%,${SDKINCDIRS})
+CFLAGS+= $(patsubst %,-I${SDKDIR}/components/%,${SDKINCDIRS})
 CFLAGS+= -mcpu=cortex-m0 -mfloat-abi=soft -mthumb -mabi=aapcs	\
 	-ffunction-sections -fdata-sections -fno-builtin \
 	-fplan9-extensions
@@ -31,14 +33,14 @@ LINKERSCRIPT?= gcc_nrf51_${USE_SOFTDEVICE}_${DEVICE_VARIANT}.ld
 LDFLAGS+= -Wl,--gc-sections -fwhole-program --specs=nano.specs
 LDFLAGS+= -Wl,-Map=${PROG}.map
 LDFLAGS+= -Wl,-T,${SDKDIR}/relayr/ld/libc-nano.ld
-LDFLAGS+= -Wl,-L${SDKDIR}/nrf51822/Source/templates/gcc
+LDFLAGS+= -Wl,-L${SDKDIR}/components/toolchain/gcc
 LDFLAGS+= -Wl,-T,${LINKERSCRIPT}
 
 
 ASFLAGS+= -x assembler-with-cpp
 
 
-SRCS+=	$(patsubst %,${SDKDIR}/nrf51822/Source/%,${SDKSRCS})
+SRCS+=	$(patsubst %,${SDKDIR}/components/%,${SDKSRCS})
 
 
 CC=	arm-none-eabi-gcc
