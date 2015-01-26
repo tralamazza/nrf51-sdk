@@ -14,7 +14,7 @@ else
 CFLAGS+= -I${SDDIR}/include
 endif
 
-SDKINCDIRS+= $(dir ${SDKSRCS})
+SDKINCDIRS+= $(sort $(dir ${SDKSRCS}) )
 
 
 CPPFLAGS+= $(patsubst %,-D%,${DEFINES})
