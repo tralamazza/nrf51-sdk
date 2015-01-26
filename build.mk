@@ -5,7 +5,7 @@ SDKINCDIRS+= toolchain toolchain/gcc drivers_nrf/hal
 
 SDKSRCS+= toolchain/gcc/gcc_startup_nrf51.s toolchain/system_nrf51.c
 USE_SOFTDEVICE?= s110
-SOFTDEV_HEX?= $(lastword $(wildcard ${USE_SOFTDEVICE}_nrf51822_*_softdevice.hex))
+SOFTDEV_HEX?= $(lastword $(wildcard ${USE_SOFTDEVICE}_nrf51*_softdevice.hex))
 
 SDKDIR?= $(abspath $(dir $(lastword ${MAKEFILE_LIST})))
 ifndef SDDIR
@@ -87,7 +87,8 @@ ${PROG}.elf: ${OBJS}
 	g\n\
 	exit\n", f, min}' f="$<" > $@
 
-%-all.jlink: %.jlink ${SOFTDEV_HEX}
+%-all.jlink: %.jlink ${SOFTDEV_HEX} FORCE
+	@[ -e "${SOFTDEV_HEX}" ] || echo "cannot find softdevice hex image '${SOFTDEV_HEX}'" >&2
 	printf "\
 	device NRF51822_XXAA\n\
 	halt\n\
@@ -108,3 +109,5 @@ gdbserver: ${PROG}.elf
 
 clean:
 	-rm -f ${OBJS} ${OBJS:.o=.d} ${PROG}.hex ${PROG}.elf ${PROG}.map ${PROG}.jlink ${PROG}-all.jlink
+
+.PHONY: all flash flash-all gdbserver clean FORCE
