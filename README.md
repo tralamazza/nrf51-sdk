@@ -16,3 +16,5 @@ The Nrf SDK uses `libc_s` which was replaced by `libc_nano` in GCC 4.9.
 Go to your lib folder (e.g. `gcc-arm-none-eabi-4_9-2014q4/arm-none-eabi/lib`) and create a link to `libc_s.a`:
 
     ln -s libc_nano.a libc_s.a
+
+Do this for the subfolders as well (armv7 ...).
