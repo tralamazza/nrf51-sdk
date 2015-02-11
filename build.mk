@@ -45,7 +45,8 @@ SRCS+=	$(patsubst %,${SDKDIR}/components/%,${SDKSRCS})
 
 CC=	arm-none-eabi-gcc
 OBJCOPY=	arm-none-eabi-objcopy
-
+OBJDUMP=	arm-none-eabi-objdump
+GDB=	arm-none-eabi-gdb
 
 GENERATE.d=	$(CC) -MM ${CFLAGS} ${CPPFLAGS} -MT $@ -MT ${@:.d=.o} -MP -MF $@ $<
 COMPILE.s=	${COMPILE.S}
@@ -80,7 +81,7 @@ ${PROG}.elf: ${OBJS}
 	${OBJCOPY} -O ihex $< $@
 
 %.jlink: %.hex
-	arm-none-eabi-objdump -h $< | \
+	${OBJDUMP} -h $< | \
 	awk '$$1 ~ /^[0-9]+$$/ {addr="0x"$$5; if (!min || addr < min) min = addr} END { printf "\
 	loadbin %s,%s\n\
 	r\n\
@@ -107,7 +108,10 @@ flash-all: ${PROG}.hex ${SOFTDEV_HEX} ${PROG}-all.jlink
 gdbserver: ${PROG}.elf
 	JLinkGDBServer -device nRF51822_xxAA -if SWD
 
+gdb: ${PROG}.elf
+	${GDB} ${PROG}.elf -ex 'target remote :2331'
+
 clean:
 	-rm -f ${OBJS} ${OBJS:.o=.d} ${PROG}.hex ${PROG}.elf ${PROG}.map ${PROG}.jlink ${PROG}-all.jlink
 
-.PHONY: all flash flash-all gdbserver clean FORCE
+.PHONY: all flash flash-all gdbserver gdb clean FORCE
