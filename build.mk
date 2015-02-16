@@ -16,6 +16,12 @@ endif
 
 SDKINCDIRS+= $(sort $(dir ${SDKSRCS}) )
 
+ifdef USE_RTX
+DEFINES+= RTX __HEAP_SIZE=0 __STACK_SIZE=1024
+SRCS+= ${SDKDIR}/external/rtx/port/RTX_Conf_CM.c 
+CFLAGS+= -I${SDKDIR}/external/rtx/include
+LDLIBS+= ${SDKDIR}/external/rtx/source/GCC/libRTX_CM0.a
+endif
 
 CPPFLAGS+= $(patsubst %,-D%,${DEFINES})
 
