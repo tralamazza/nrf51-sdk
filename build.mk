@@ -39,6 +39,7 @@ LINKERSCRIPT?= gcc_nrf51_${USE_SOFTDEVICE}_${DEVICE_VARIANT}.ld
 LDFLAGS+= -Wl,--gc-sections -fwhole-program --specs=nano.specs
 LDFLAGS+= -Wl,-Map=${PROG}.map
 LDFLAGS+= -Wl,-T,${SDKDIR}/relayr/ld/libc-nano.ld
+LDFLAGS+= -Wl,-L${SDKDIR}/relayr/ld
 LDFLAGS+= -Wl,-L${SDKDIR}/components/toolchain/gcc
 LDFLAGS+= -Wl,-T,${LINKERSCRIPT}
 
