@@ -3,7 +3,7 @@ DEVICE_VARIANT?= xxaa
 DEFINES+= NRF51 NRF51822_QFAA_CA
 SDKINCDIRS+= toolchain toolchain/gcc drivers_nrf/hal
 
-SDKSRCS+= toolchain/gcc/gcc_startup_nrf51.s toolchain/system_nrf51.c
+SDKSRCS+= toolchain/gcc/gcc_startup_nrf51.s toolchain/system_nrf51.c ble/common /libraries/util
 USE_SOFTDEVICE?= s110
 SOFTDEV_HEX?= $(lastword $(wildcard ${USE_SOFTDEVICE}_nrf51*_softdevice.hex))
 
