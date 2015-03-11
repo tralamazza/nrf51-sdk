@@ -3,7 +3,7 @@ DEVICE_VARIANT?= xxaa
 DEFINES+= NRF51 NRF51822_QFAA_CA
 SDKINCDIRS+= toolchain toolchain/gcc drivers_nrf/hal
 
-SDKSRCS+= toolchain/gcc/gcc_startup_nrf51.s toolchain/system_nrf51.c ble/common /libraries/util
+SDKSRCS+= toolchain/gcc/gcc_startup_nrf51.s toolchain/system_nrf51.c
 USE_SOFTDEVICE?= s110
 SOFTDEV_HEX?= $(lastword $(wildcard ${USE_SOFTDEVICE}_nrf51*_softdevice.hex))
 
@@ -18,15 +18,17 @@ SDKINCDIRS+= $(sort $(dir ${SDKSRCS}) )
 
 ifdef USE_RTX
 DEFINES+= RTX __HEAP_SIZE=0 __STACK_SIZE=1024
-SRCS+= ${SDKDIR}/external/rtx/port/RTX_Conf_CM.c 
-CFLAGS+= -I${SDKDIR}/external/rtx/include
-LDLIBS+= ${SDKDIR}/external/rtx/source/GCC/libRTX_CM0.a
+SRCS+= ${SDKDIR}/nordic/external/rtx/port/RTX_Conf_CM.c
+CFLAGS+= -I${SDKDIR}/nordic/external/rtx/include
+LDLIBS+= ${SDKDIR}/nordic/external/rtx/source/GCC/libRTX_CM0.a
 endif
+
+include ${SDKDIR}/relayr/src/build.mk
 
 CPPFLAGS+= $(patsubst %,-D%,${DEFINES})
 
 CFLAGS+= -I${SDKDIR}/relayr/include
-CFLAGS+= $(patsubst %,-I${SDKDIR}/components/%,${SDKINCDIRS})
+CFLAGS+= $(patsubst %,-I${SDKDIR}/nordic/components/%,${SDKINCDIRS})
 CFLAGS+= -mcpu=cortex-m0 -mfloat-abi=soft -mthumb -mabi=aapcs	\
 	-ffunction-sections -fdata-sections -fno-builtin \
 	-fplan9-extensions
@@ -40,14 +42,14 @@ LDFLAGS+= -Wl,--gc-sections -fwhole-program --specs=nano.specs
 LDFLAGS+= -Wl,-Map=${PROG}.map
 LDFLAGS+= -Wl,-T,${SDKDIR}/relayr/ld/libc-nano.ld
 LDFLAGS+= -Wl,-L${SDKDIR}/relayr/ld
-LDFLAGS+= -Wl,-L${SDKDIR}/components/toolchain/gcc
+LDFLAGS+= -Wl,-L${SDKDIR}/nordic/components/toolchain/gcc
 LDFLAGS+= -Wl,-T,${LINKERSCRIPT}
 
 
 ASFLAGS+= -x assembler-with-cpp
 
 
-SRCS+=	$(patsubst %,${SDKDIR}/components/%,${SDKSRCS})
+SRCS+=	$(patsubst %,${SDKDIR}/nordic/components/%,${SDKSRCS})
 
 
 CC=	arm-none-eabi-gcc
@@ -63,10 +65,12 @@ all: ${PROG}.hex
 
 
 define compile_source
+ifneq ($(filter %.c %.S %.s,${1}),)
 $(addsuffix .o,$(notdir $(basename ${1}))): ${1}
 	$${COMPILE$(suffix ${1})} $${OUTPUT_OPTION} $$<
+endif
 
-ifneq ($(filter .c,${1}),)
+ifneq ($(filter %.c,${1}),)
 $(addsuffix .d,$(notdir $(basename ${1}))): ${1}
 	$$(GENERATE.d)
 endif
@@ -80,6 +84,7 @@ ifneq (${MAKECMDGOALS},clean)
 -include $(patsubst %.o,%.d,${OBJS})
 endif
 
+CLEANFILES+= ${OBJS} ${OBJS:.o=.d} ${PROG}.hex ${PROG}.elf ${PROG}.map ${PROG}.jlink ${PROG}-all.jlink
 
 ${PROG}.elf: ${OBJS}
 	${CC} -o $@ ${CFLAGS} ${LDFLAGS} ${OBJS} ${LDLIBS}
@@ -97,11 +102,13 @@ ${PROG}.elf: ${OBJS}
 
 %-all.jlink: %.jlink ${SOFTDEV_HEX} FORCE
 	@[ -e "${SOFTDEV_HEX}" ] || echo "cannot find softdevice hex image '${SOFTDEV_HEX}'" >&2
+	# w4 0x4001e504, 0x2 -> enable erase: CONFIG.WEN = EEN
+	# w4 0x4001e50c, 0x1 -> erase all: ERASEALL = 1
 	printf "\
 	device NRF51822_XXAA\n\
 	halt\n\
-	w4 0x4001e504,2	# enable erase: CONFIG.WEN = EEN\n\
-	w4 0x4001e50c,1 # erase all: ERASEALL = 1\n\
+	w4 0x4001e504, 0x2\n\
+	w4 0x4001e50c, 0x1\n\
 	sleep 1\n\
 	loadbin %s,0\n" ${SOFTDEV_HEX} > $@
 	cat $< >> $@
@@ -119,6 +126,6 @@ gdb: ${PROG}.elf
 	${GDB} ${PROG}.elf -ex 'target remote :2331'
 
 clean:
-	-rm -f ${OBJS} ${OBJS:.o=.d} ${PROG}.hex ${PROG}.elf ${PROG}.map ${PROG}.jlink ${PROG}-all.jlink
+	-rm -f ${CLEANFILES}
 
 .PHONY: all flash flash-all gdbserver gdb clean FORCE

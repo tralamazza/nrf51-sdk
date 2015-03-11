@@ -59,7 +59,7 @@ struct service_desc {
 void simble_init(const char *name);
 void simble_adv_start(void);
 uint8_t simble_get_vendor_uuid_class(void);
-void simble_process_event_loop(void);
+void simble_process_event_loop(void) __attribute__ ((noreturn));
 
 void simble_srv_register(struct service_desc *s);
 void simble_srv_init(struct service_desc *s, uint8_t type, uint16_t id);
