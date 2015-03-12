@@ -7,7 +7,7 @@ SDKSRCS+= toolchain/gcc/gcc_startup_nrf51.s toolchain/system_nrf51.c
 USE_SOFTDEVICE?= s110
 SOFTDEV_HEX?= $(lastword $(wildcard ${USE_SOFTDEVICE}_nrf51*_softdevice.hex))
 
-SDKDIR?= $(abspath $(dir $(lastword ${MAKEFILE_LIST})))
+SDKDIR:= $(abspath $(dir $(lastword ${MAKEFILE_LIST})))
 ifndef SDDIR
 SDKINCDIRS+= softdevice/${USE_SOFTDEVICE}/headers
 else
@@ -62,7 +62,6 @@ COMPILE.s=	${COMPILE.S}
 
 
 all: ${PROG}.hex
-
 
 define compile_source
 ifneq ($(filter %.c %.S %.s,${1}),)

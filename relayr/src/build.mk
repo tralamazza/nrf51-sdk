@@ -4,6 +4,8 @@ CFLAGS+= \
 	-I${RELAYR_ROOT}/src \
 	-I${SDKDIR}/segger/RTT
 
+SDKINCDIRS+= ble/common libraries/util
+
 SRCS+= ${RELAYR_ROOT}/src/indicator.c \
 	${RELAYR_ROOT}/src/onboard-led.c \
 	${RELAYR_ROOT}/src/simble.c \
@@ -13,3 +15,5 @@ SRCS+= ${RELAYR_ROOT}/src/indicator.c \
 	${SDKDIR}/segger/RTT/SEGGER_RTT.c \
 	${SDKDIR}/segger/RTT/SEGGER_RTT_printf.c \
 	${SDKDIR}/segger/Syscalls/RTT_Syscalls_GCC.c
+
+DEFINES+= BLE_STACK_SUPPORT_REQD SOFTDEVICE_PRESENT __HEAP_SIZE=0
