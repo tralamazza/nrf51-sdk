@@ -1,4 +1,4 @@
-#include "segger_rtt.h"
+#include "segger_rtt_init.h"
 #include <stddef.h>
 
 void
