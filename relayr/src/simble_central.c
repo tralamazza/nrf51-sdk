@@ -9,9 +9,9 @@ const uint32_t BLE_EVT_BUF_SIZE = (sizeof(ble_evt_t) + (GATT_MTU_SIZE_DEFAULT));
 
 struct simble_central_ctx_t *global_ctx;
 
-static api_result_t
+static ret_code_t
 device_manager_event_handler(dm_handle_t const *p_handle,
-	dm_event_t const *p_event, api_result_t event_result)
+	dm_event_t const *p_event, ret_code_t event_result)
 
 {
 	APP_ERROR_CHECK(event_result);

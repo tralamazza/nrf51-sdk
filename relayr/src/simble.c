@@ -237,17 +237,12 @@ simble_srv_char_attach_format(struct char_desc *c, uint8_t format, int8_t expone
 void
 simble_srv_char_update(struct char_desc *c, void *val)
 {
-#if defined(SD120)
         ble_gatts_value_t vt = {
                 .len = c->length,
                 .offset = 0,
                 .p_value = val
         };
         sd_ble_gatts_value_set(current_conn_handle, c->handle, &vt);
-#else
-        uint16_t len = c->length;
-        sd_ble_gatts_value_set(c->handle, 0, &len, val);
-#endif
 }
 
 static struct service_desc *

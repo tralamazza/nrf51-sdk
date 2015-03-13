@@ -5,6 +5,7 @@ CFLAGS+= \
 	-I${SDKDIR}/segger/RTT
 
 SDKINCDIRS+= \
+	device \
 	ble/common \
 	libraries/util
 
@@ -20,6 +21,8 @@ SRCS+= \
 	${SDKDIR}/segger/Syscalls/RTT_Syscalls_GCC.c
 
 ifeq (${USE_SOFTDEVICE},s120)
+DEFINES+= SD120
+
 SRCS+= \
 	${RELAYR_ROOT}/src/simble_central.c
 
