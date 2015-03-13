@@ -18,4 +18,4 @@ Go to your lib folder (e.g. `gcc-arm-none-eabi-4_9-2014q4/arm-none-eabi/lib`) an
 
     ln -s libc_nano.a libc_s.a
 
-Do this for the subfolders as well (armv7 ...).
+Do this for the subfolders as well (armv6 for nrf51, armv7 for freescale  ...).
