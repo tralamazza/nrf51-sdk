@@ -50,18 +50,6 @@ device_manager_event_handler(dm_handle_t const *p_handle,
 	return NRF_SUCCESS;
 }
 
-static void
-handle_soc_event(uint32_t evt_id)
-{
-	switch(evt_id) {
-	case NRF_EVT_HFCLKSTARTED:
-	case NRF_EVT_POWER_FAILURE_WARNING:
-	case NRF_EVT_FLASH_OPERATION_SUCCESS:
-	case NRF_EVT_FLASH_OPERATION_ERROR:
-		break;
-	}
-}
-
 void
 simble_central_process_event_loop(struct simble_central_ctx_t *ctx)
 {
@@ -73,7 +61,7 @@ simble_central_process_event_loop(struct simble_central_ctx_t *ctx)
 			ctx->before_wait_cb(ctx);
 		}
 		while (sd_evt_get(&evt_id) == NRF_SUCCESS) {
-			handle_soc_event(evt_id);
+			pstorage_sys_event_handler(evt_id);
 		}
 		while (sd_ble_evt_get((uint8_t*)&ble_evt_buffer, &ble_evt_buffer_len) == NRF_SUCCESS) {
 			dm_ble_evt_handler((ble_evt_t*)&ble_evt_buffer);
