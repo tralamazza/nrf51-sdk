@@ -53,7 +53,7 @@ device_manager_event_handler(dm_handle_t const *p_handle,
 void
 simble_central_process_event_loop(struct simble_central_ctx_t *ctx)
 {
-	uint32_t evt_id;
+	uint32_t err_code, evt_id;
 	uint32_t ble_evt_buffer[CEIL_DIV(BLE_EVT_BUF_SIZE, sizeof(uint32_t))];
 	uint16_t ble_evt_buffer_len = sizeof(ble_evt_buffer);
 	for (;;) {
@@ -70,14 +70,17 @@ simble_central_process_event_loop(struct simble_central_ctx_t *ctx)
 			}
 			ble_evt_buffer_len = sizeof(ble_evt_buffer);
 		}
-		sd_app_evt_wait();
+		err_code = sd_app_evt_wait();
+		APP_ERROR_CHECK(err_code);
 	}
 }
 
 static void
 softdevice_assertion_handler(uint32_t pc, uint16_t line_number, const uint8_t *p_file_name)
 {
-	// XXX save to flash?
+	for (;;) {
+		/* NOTHING */
+	}
 }
 
 void
