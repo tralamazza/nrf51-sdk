@@ -361,6 +361,7 @@ simble_process_event_loop(void)
 
                 sd_app_evt_wait();
                 r = sd_ble_evt_get((uint8_t *)&evt_buf, &len);
+                sd_nvic_ClearPendingIRQ(SWI2_IRQn);
                 if (r == NRF_SUCCESS) {
                         srv_handle_ble_event(&evt_buf.evt);
 
