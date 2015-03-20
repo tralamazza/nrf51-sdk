@@ -3,6 +3,7 @@
 
 // Configure the Tick interval, 0x20 = 32.768/32 = 1.024
 #define RTC_PRESCALER 31u
+#define RTC_MAX_TIMERS  4
 
 struct rtc_x {
   uint32_t period;  //24 bits, max value: 16777216 (~4 hours @ 1ms tick)
@@ -10,7 +11,8 @@ struct rtc_x {
 };
 
 struct rtc_ctx {
-	uint8_t timers_count;  //Max 4
+	uint8_t used_timers;  //Max 4
+
 };
 
 /* RTC : the default TICK_INTERVAL is 1ms, the module can manage up to 4 compare
@@ -22,24 +24,48 @@ rtc_init(void)
   sd_nvic_SetPriority(RTC1_IRQn, NRF_APP_PRIORITY_LOW);
   sd_nvic_EnableIRQ(RTC1_IRQn);
 
+  //The LFCLK runs at 32.768 Hz, divided by (PRESCALER+1) = 1.024 ms
+  NRF_RTC1->PRESCALER = RTC_PRESCALER;
+
+  NRF_RTC1->CC[0] = 100;
+
+  // Clear the Counter
+  NRF_RTC1->TASKS_CLEAR = 1;
+  // Start the RTC1
+  NRF_RTC1->TASKS_START = 1;
+
+  NRF_RTC1->EVTENSET = RTC_EVTENSET_COMPARE0_Msk;
   // Config. CC[0] module to generate interrupts
   NRF_RTC1->INTENSET = RTC_INTENSET_COMPARE0_Msk;
 
-  //The LFCLK runs at 32.768 Hz, divided by (PRESCALER+1) is 1.024 ms
-  NRF_RTC1->PRESCALER = RTC_PRESCALER;
+  // Disable the Event routing to the PPI to save power
+  NRF_RTC1->EVTEN = 0;
+}
+
+void rtc_oneshot_timer(){
+
 }
 
 /* The RTC1 instance IRQ handler*/
 void
 RTC1_IRQHandler(void)
 {
-	if (NRF_RTC1->EVENTS_COMPARE[0] == 0)
-		return;
-	NRF_RTC1->EVENTS_COMPARE[0] = 0;
+  NRF_GPIO->OUT ^= (1 << 1);
+  if ((NRF_RTC1->EVENTS_COMPARE[0] != 0) &&
+    ((NRF_RTC1->INTENSET & RTC_INTENSET_COMPARE0_Msk) != 0))
+  {
+      // prepare the comparator for the next value
+      NRF_RTC1->CC[0] += 100;
 
-  //Toggle pin2 for test
-  NRF_GPIO->OUT ^= (1 << 2);
+      // clear the event CC_0
+      NRF_RTC1->EVENTS_COMPARE[0] = 0;
+      //NRF_RTC1->INTENCLR = RTC_INTENCLR_COMPARE0_Msk;
 
+      //Toggle pin2 for test
+      NRF_GPIO->OUT ^= (1 << 2);
+
+      //sd_nvic_ClearPendingIRQ(RTC1_IRQn);
+  }
 }
 
   // __O  uint32_t  TASKS_START;                       /*!< Start RTC Counter.                                                    */
