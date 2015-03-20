@@ -1,4 +1,5 @@
 #include "simble.h"
+#include "rtc.h"
 
 
 // Configure the Tick interval, 0x20 = 32.768/32 = 1.024
