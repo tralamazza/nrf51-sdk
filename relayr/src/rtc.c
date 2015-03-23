@@ -36,20 +36,20 @@ rtc_init(struct rtc_ctx *c)
   // Config. CC[x] module to generate interrupts and events
   /* TODO: Nasty, find a better way to set the masks */
   if (ctx->used_timers > 0){
-      NRF_RTC1->EVTENSET = RTC_EVTENSET_COMPARE0_Msk;
-      NRF_RTC1->INTENSET = RTC_INTENSET_COMPARE0_Msk;
+      NRF_RTC1->EVTENSET |= RTC_EVTENSET_COMPARE0_Msk;
+      NRF_RTC1->INTENSET |= RTC_INTENSET_COMPARE0_Msk;
   }
   if (ctx->used_timers > 1){
-      NRF_RTC1->EVTENSET = RTC_EVTENSET_COMPARE1_Msk;
-      NRF_RTC1->INTENSET = RTC_INTENSET_COMPARE1_Msk;
+      NRF_RTC1->EVTENSET |= RTC_EVTENSET_COMPARE1_Msk;
+      NRF_RTC1->INTENSET |= RTC_INTENSET_COMPARE1_Msk;
   }
   if (ctx->used_timers > 2){
-      NRF_RTC1->EVTENSET = RTC_EVTENSET_COMPARE2_Msk;
-      NRF_RTC1->INTENSET = RTC_INTENSET_COMPARE2_Msk;
+      NRF_RTC1->EVTENSET |= RTC_EVTENSET_COMPARE2_Msk;
+      NRF_RTC1->INTENSET |= RTC_INTENSET_COMPARE2_Msk;
   }
   if (ctx->used_timers > 3){
-      NRF_RTC1->EVTENSET = RTC_EVTENSET_COMPARE3_Msk;
-      NRF_RTC1->INTENSET = RTC_INTENSET_COMPARE3_Msk;
+      NRF_RTC1->EVTENSET |= RTC_EVTENSET_COMPARE3_Msk;
+      NRF_RTC1->INTENSET |= RTC_INTENSET_COMPARE3_Msk;
   }
 
 
