@@ -5,7 +5,6 @@ SDKINCDIRS+= toolchain toolchain/gcc drivers_nrf/hal
 
 SDKSRCS+= toolchain/gcc/gcc_startup_nrf51.s toolchain/system_nrf51.c
 USE_SOFTDEVICE?= s110
-SOFTDEV_HEX?= $(lastword $(wildcard ${USE_SOFTDEVICE}_nrf51*_softdevice.hex))
 
 SDKDIR:= $(abspath $(dir $(lastword ${MAKEFILE_LIST})))
 ifndef SDDIR
@@ -13,6 +12,8 @@ SDKINCDIRS+= softdevice/${USE_SOFTDEVICE}/headers
 else
 CFLAGS+= -I${SDDIR}/include
 endif
+
+SOFTDEV_HEX?= $(lastword $(wildcard ${SDKDIR}/nordic/components/softdevice/${USE_SOFTDEVICE}/hex/${USE_SOFTDEVICE}*softdevice.hex))
 
 SDKINCDIRS+= $(sort $(dir ${SDKSRCS}) )
 
