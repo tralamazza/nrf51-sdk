@@ -159,20 +159,27 @@ simble_srv_register(struct service_desc *s)
 
         for (int i = 0; i < s->char_count; ++i) {
                 struct char_desc *c = &s->chars[i];
-
+                ble_gatts_attr_md_t cccd_md;
+                memset(&cccd_md, 0, sizeof(cccd_md));
+                BLE_GAP_CONN_SEC_MODE_SET_OPEN(&cccd_md.read_perm);
+                BLE_GAP_CONN_SEC_MODE_SET_OPEN(&cccd_md.write_perm);
+                cccd_md.vloc = BLE_GATTS_VLOC_STACK;
                 int have_write = c->write_cb != NULL;
                 ble_gatts_char_md_t char_meta = {
                         .char_props = {
+                                .broadcast = 0,
                                 .read = 1,
-                                /* XXX customizable */
-                                .write = have_write,
                                 .write_wo_resp = have_write,
+                                .write = have_write,
+                                .notify = c->notify,
+                                .indicate = c->indicate,
                                 .auth_signed_wr = have_write,
                         },
                         .p_char_user_desc = (uint8_t *)c->desc,
                         .char_user_desc_size = strlen(c->desc),
                         .char_user_desc_max_size = strlen(c->desc),
                         .p_char_pf = c->format.format != 0 ? &c->format : NULL,
+                        .p_cccd_md = (c->notify || c->indicate) ? &cccd_md : NULL,
                 };
                 ble_gatts_attr_md_t chr_attr_meta = {
                         .vloc = BLE_GATTS_VLOC_STACK,
@@ -243,6 +250,19 @@ simble_srv_char_update(struct char_desc *c, void *val)
                 .p_value = val
         };
         sd_ble_gatts_value_set(current_conn_handle, c->handle, &vt);
+}
+
+uint32_t
+simble_srv_char_notify(struct char_desc *c, bool indicate, uint16_t length, void *val)
+{
+        ble_gatts_hvx_params_t hvx_params = {
+                .handle = c->handle,
+                .type = indicate ? BLE_GATT_HVX_INDICATION : BLE_GATT_HVX_NOTIFICATION,
+                .offset = 0,
+                .p_len = &length,
+                .p_data = val,
+        };
+        return sd_ble_gatts_hvx(current_conn_handle, &hvx_params);
 }
 
 static struct service_desc *
@@ -333,6 +353,18 @@ srv_handle_ble_event(ble_evt_t *evt)
                 s = srv_find_by_uuid(&evt->evt.gatts_evt.params.write.context.srvc_uuid);
                 c = srv_find_char_by_uuid(s, &evt->evt.gatts_evt.params.write.context.char_uuid);
                 c->write_cb(s, c, evt->evt.gatts_evt.params.write.data, evt->evt.gatts_evt.params.write.len);
+                break;
+        case BLE_GATTS_EVT_HVC:
+                s = services;
+                for (; s != NULL; s = s->next) {
+                        c = s->chars;
+                        for (int i = 0; i < s->char_count; ++i, ++c) {
+                                if (c->handle == evt->evt.gatts_evt.params.hvc.handle) {
+                                        c->indicate_cb(s, c);
+                                        break;
+                                }
+                        }
+                }
                 break;
         }
 }
