@@ -29,24 +29,10 @@ rtc_update_cfg(uint32_t value, uint8_t timer_id, bool enabled)
 void
 cfg_int_mask(uint8_t timer_id, bool enabled)
 {
-  switch (timer_id) {
-    case 0:
-      if (enabled) NRF_RTC1->INTENSET |= RTC_INTENSET_COMPARE0_Msk;
-      else NRF_RTC1->INTENCLR |= RTC_INTENSET_COMPARE0_Msk;
-    break;
-    case 1:
-      if (enabled) NRF_RTC1->INTENSET |= RTC_INTENSET_COMPARE1_Msk;
-      else NRF_RTC1->INTENCLR |= RTC_INTENSET_COMPARE1_Msk;
-    break;
-    case 2:
-      if (enabled) NRF_RTC1->INTENSET |= RTC_INTENSET_COMPARE2_Msk;
-      else NRF_RTC1->INTENCLR |= RTC_INTENSET_COMPARE2_Msk;
-    break;
-    case 3:
-      if (enabled) NRF_RTC1->INTENSET |= RTC_INTENSET_COMPARE3_Msk;
-      else NRF_RTC1->INTENCLR |= RTC_INTENSET_COMPARE3_Msk;
-    break;
-  }
+  if (enabled)
+    NRF_RTC1->INTENSET |= RTC_INTENSET_COMPARE0_Msk << timer_id;
+  else
+    NRF_RTC1->INTENCLR |= RTC_INTENSET_COMPARE0_Msk << timer_id;
 }
 
 void
@@ -65,27 +51,12 @@ rtc_init(struct rtc_ctx *c)
 
   for (int i=0; i < RTC_MAX_TIMERS; i++) {
     if (ctx->used_timers < RTC_MAX_TIMERS && (ctx->rtc_x[i].period != 0)) {
-      NRF_RTC1->CC[i] = ctx->rtc_x[i].period;
+      // Config. CC[x] module to generate interrupts and events
+      NRF_RTC1->CC[i] += ctx->rtc_x[i].period;
+      NRF_RTC1->EVTENSET |= RTC_EVTENSET_COMPARE0_Msk << i;
+      cfg_int_mask(i, true);
       ctx->used_timers++;
     }
-  }
-  // Config. CC[x] module to generate interrupts and events
-  /* TODO: Nasty, find a better way to set the masks */
-  if (ctx->used_timers > 0){
-      NRF_RTC1->EVTENSET |= RTC_EVTENSET_COMPARE0_Msk;
-      cfg_int_mask(0, true);
-  }
-  if (ctx->used_timers > 1){
-      NRF_RTC1->EVTENSET |= RTC_EVTENSET_COMPARE1_Msk;
-      cfg_int_mask(1, true);
-  }
-  if (ctx->used_timers > 2){
-      NRF_RTC1->EVTENSET |= RTC_EVTENSET_COMPARE2_Msk;
-      cfg_int_mask(2, true);
-  }
-  if (ctx->used_timers > 3){
-      NRF_RTC1->EVTENSET |= RTC_EVTENSET_COMPARE3_Msk;
-      cfg_int_mask(3, true);
   }
   // Reset the Counter
   NRF_RTC1->TASKS_CLEAR = 1;
@@ -93,8 +64,10 @@ rtc_init(struct rtc_ctx *c)
   NRF_RTC1->TASKS_START = 1;
 }
 
-void rtc_oneshot_timer(){
-//TODO: implement this
+bool rtc_oneshot_timer(uint32_t value, cb)
+{
+XXX
+  rtc_update_cfg(value, uint8_t timer_id use available, true)
 }
 
 /* The RTC1 instance IRQ handler*/
