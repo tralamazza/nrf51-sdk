@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
+#include <app_util.h>
 
 #include "simble.h"
 #include "onboard-led.h"
@@ -198,12 +199,10 @@ simble_srv_register(struct service_desc *s)
                         .init_len = 0,
                         .max_len = c->length,
                 };
-                ble_gatts_char_handles_t chr_handles;
                 sd_ble_gatts_characteristic_add(s->handle,
                                                 &char_meta,
                                                 &chr_attr,
-                                                &chr_handles);
-                c->handle = chr_handles.value_handle;
+                                                &c->handles);
         }
 }
 
@@ -249,14 +248,14 @@ simble_srv_char_update(struct char_desc *c, void *val)
                 .offset = 0,
                 .p_value = val
         };
-        sd_ble_gatts_value_set(current_conn_handle, c->handle, &vt);
+        sd_ble_gatts_value_set(current_conn_handle, c->handles.value_handle, &vt);
 }
 
 uint32_t
 simble_srv_char_notify(struct char_desc *c, bool indicate, uint16_t length, void *val)
 {
         ble_gatts_hvx_params_t hvx_params = {
-                .handle = c->handle,
+                .handle = c->handles.value_handle,
                 .type = indicate ? BLE_GATT_HVX_INDICATION : BLE_GATT_HVX_NOTIFICATION,
                 .offset = 0,
                 .p_len = &length,
@@ -320,7 +319,6 @@ srv_handle_ble_event(ble_evt_t *evt)
 {
         struct service_desc *s;
         struct char_desc *c;
-
         switch (evt->header.evt_id) {
         case BLE_GATTS_EVT_RW_AUTHORIZE_REQUEST: {
                 ble_gatts_rw_authorize_reply_params_t auth_reply = {
@@ -352,19 +350,29 @@ srv_handle_ble_event(ble_evt_t *evt)
         case BLE_GATTS_EVT_WRITE:
                 s = srv_find_by_uuid(&evt->evt.gatts_evt.params.write.context.srvc_uuid);
                 c = srv_find_char_by_uuid(s, &evt->evt.gatts_evt.params.write.context.char_uuid);
-                c->write_cb(s, c, evt->evt.gatts_evt.params.write.data, evt->evt.gatts_evt.params.write.len);
+                if (evt->evt.gatts_evt.params.write.handle == c->handles.cccd_handle) {
+                        if (c->notify_status_cb)
+                                c->notify_status_cb(s, c, uint16_decode(evt->evt.gatts_evt.params.write.data));
+                } else {
+                        c->write_cb(s, c, evt->evt.gatts_evt.params.write.data, evt->evt.gatts_evt.params.write.len);
+                }
                 break;
         case BLE_GATTS_EVT_HVC:
                 s = services;
                 for (; s != NULL; s = s->next) {
                         c = s->chars;
                         for (int i = 0; i < s->char_count; ++i, ++c) {
-                                if (c->handle == evt->evt.gatts_evt.params.hvc.handle) {
-                                        c->indicate_cb(s, c);
+                                if (c->handles.value_handle == evt->evt.gatts_evt.params.hvc.handle) {
+                                        if (c->indicated_cb)
+                                                c->indicated_cb(s, c);
                                         break;
                                 }
                         }
                 }
+                break;
+        case BLE_GATTS_EVT_SYS_ATTR_MISSING:
+                sd_ble_gatts_sys_attr_set(current_conn_handle, NULL, 0,
+                        BLE_GATTS_SYS_ATTR_FLAG_SYS_SRVCS | BLE_GATTS_SYS_ATTR_FLAG_USR_SRVCS);
                 break;
         }
 }

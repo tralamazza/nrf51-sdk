@@ -29,7 +29,8 @@ enum org_bluetooth_unit {
 struct char_desc;
 struct service_desc;
 
-typedef void (char_indicate_cb_t)(struct service_desc *s, struct char_desc *c);
+typedef void (char_notify_status_cb_t)(struct service_desc *s, struct char_desc *c, const int8_t status);
+typedef void (char_indicated_cb_t)(struct service_desc *s, struct char_desc *c);
 typedef void (char_write_cb_t)(struct service_desc *s, struct char_desc *c, const void *val, const uint16_t len);
 typedef void (char_read_cb_t)(struct service_desc *s, struct char_desc *c, void **val, uint16_t *len);
 typedef void (connect_cb_t)(struct service_desc *s);
@@ -40,16 +41,20 @@ struct char_desc {
         const char *desc;
         /* fmt */
         uint16_t length;
-        uint16_t handle;
+        ble_gatts_char_handles_t handles;
         ble_gatts_char_pf_t format;
         char_write_cb_t *write_cb;
         char_read_cb_t *read_cb;
-        char_indicate_cb_t *indicate_cb;
+        char_indicated_cb_t *indicated_cb;
+        char_notify_status_cb_t *notify_status_cb;
         void *data;
         union {
-                uint8_t notify : 1;
-                uint8_t indicate : 1;
-                uint8_t _flags;
+                struct {
+                        uint8_t notify : 1;
+                        uint8_t indicate : 1;
+                        uint8_t _pad : 6;
+                };
+                uint8_t flags;
         };
 };
 
