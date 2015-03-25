@@ -15,7 +15,7 @@ typedef void (rtc_evt_cb_t)(struct rtc_ctx *ctx);
 
 struct rtc_x {
   uint32_t period;  //24 bits, max value: 16777216 (~4 hours @ 1ms tick)
-  uint8_t enabled;
+  bool enabled;
   rtc_evt_cb_t *cb;
 };
 
@@ -24,7 +24,8 @@ struct rtc_ctx {
   struct rtc_x rtc_x[RTC_MAX_TIMERS];
 };
 
-void rtc_update_cfg(uint32_t value, uint8_t timer_id);
+void rtc_update_cfg(uint32_t value, uint8_t timer_id, bool enabled);
 void rtc_init(struct rtc_ctx *ctx);
+void cfg_int_mask(uint8_t timer_id, bool enabled);
 
 #endif
