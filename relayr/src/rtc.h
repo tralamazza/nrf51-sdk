@@ -24,6 +24,7 @@ struct rtc_ctx {
   struct rtc_x rtc_x[RTC_MAX_TIMERS];
 };
 
+void rtc_update_cfg(uint32_t value, uint8_t timer_id);
 void rtc_init(struct rtc_ctx *ctx);
 
 #endif

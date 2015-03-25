@@ -13,9 +13,14 @@ static struct rtc_ctx *ctx;
 /* RTC : the default TICK_INTERVAL is 1ms, the module can manage up to 4 compare
       registers */
 void
-rtc_update_cfg()
+rtc_update_cfg(uint32_t value, uint8_t timer_id)
 {
-  
+  ctx->rtc_x[timer_id].period = value;
+
+  if (ctx->used_timers < RTC_MAX_TIMERS){
+    NRF_RTC1->EVENTS_COMPARE[timer_id] = 0;
+    NRF_RTC1->CC[timer_id] = NRF_RTC1->COUNTER + ctx->rtc_x[timer_id].period;
+  }
 }
 
 void
