@@ -13,6 +13,12 @@ static struct rtc_ctx *ctx;
 /* RTC : the default TICK_INTERVAL is 1ms, the module can manage up to 4 compare
       registers */
 void
+rtc_update_cfg()
+{
+  
+}
+
+void
 rtc_init(struct rtc_ctx *c)
 {
   ctx = c;

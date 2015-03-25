@@ -17,7 +17,9 @@ enum vendor_uuid {
         VENDOR_UUID_PROXIMITY_CHAR = 0x2308,
         VENDOR_UUID_IND_CHAR = 0x2309,
         VENDOR_UUID_ADC_CHAR = 0x230a,
-        VENDOR_UUID_IR_CHAR = 0x2310,
+        VENDOR_UUID_IR_CHAR = 0x230b,
+        VENDOR_UUID_RAW_CHAR = 0x230c,
+        VENDOR_UUID_SAMPLING_RATE_CHAR = 0x2400,
 };
 
 enum org_bluetooth_unit {
