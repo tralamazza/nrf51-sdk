@@ -125,6 +125,18 @@ gdbserver: ${PROG}.elf
 gdb: ${PROG}.elf
 	${GDB} ${PROG}.elf -ex 'target remote :2331'
 
+GITREV= $(shell git describe --always)
+MAILFILE= ${PROG}-${GITREV}.hex
+CLEANFILES+= ${PROG}-*.hex
+
+mailfile: ${MAILFILE}
+	-$(foreach f,$(filter-out $<,$(wildcard ${PROG}-*.hex)),rm $f;)
+	-@md5sum $<
+	-@sha256sum $<
+
+${PROG}-${GITREV}.hex: ${PROG}.hex
+	cp $< $@
+
 clean:
 	-rm -f ${CLEANFILES}
 
