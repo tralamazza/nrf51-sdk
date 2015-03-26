@@ -15,6 +15,7 @@ SRCS+= \
 	${RELAYR_ROOT}/src/simble.c \
 	${RELAYR_ROOT}/src/util.c \
 	${RELAYR_ROOT}/src/batt_serv.c \
+	${RELAYR_ROOT}/src/rtc.c \
 	${RELAYR_ROOT}/src/segger_rtt_init.c \
 	${SDKDIR}/segger/RTT/SEGGER_RTT.c \
 	${SDKDIR}/segger/RTT/SEGGER_RTT_printf.c \
