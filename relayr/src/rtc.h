@@ -9,11 +9,17 @@
 
 #define RTC_MAX_TIMERS  4
 
+enum timer_type{
+    PERIODIC = 0,
+    ONE_SHOT = 1,
+};
+
 struct rtc_ctx;
 
 typedef void (rtc_evt_cb_t)(struct rtc_ctx *ctx);
 
 struct rtc_x {
+  uint8_t type;
   uint32_t period;  //24 bits, max value: 16777216 (~4 hours @ 1ms tick)
   bool enabled;
   rtc_evt_cb_t *cb;
@@ -27,5 +33,6 @@ struct rtc_ctx {
 void rtc_update_cfg(uint32_t value, uint8_t timer_id, bool enabled);
 void rtc_init(struct rtc_ctx *ctx);
 void cfg_int_mask(uint8_t timer_id, bool enabled);
+bool rtc_oneshot_timer(uint32_t value, rtc_evt_cb_t *cb);
 
 #endif
