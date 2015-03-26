@@ -270,7 +270,7 @@ srv_find_by_uuid(ble_uuid_t *uuid)
         struct service_desc *s = services;
 
         for (; s != NULL; s = s->next) {
-                if (memcmp(&s->uuid, uuid, sizeof(uuid)) == 0)
+                if (memcmp(&s->uuid, uuid, sizeof(ble_uuid_t)) == 0)
                         break;
         }
 
@@ -283,7 +283,7 @@ srv_find_char_by_uuid(struct service_desc *s, ble_uuid_t *uuid)
         struct char_desc *c = s->chars;
 
         for (int i = 0; i < s->char_count; ++i, ++c) {
-                if (memcmp(&c->uuid, uuid, sizeof(uuid)) == 0)
+                if (memcmp(&c->uuid, uuid, sizeof(ble_uuid_t)) == 0)
                         return (c);
         }
         return (NULL);
