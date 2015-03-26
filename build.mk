@@ -123,7 +123,7 @@ gdbserver: ${PROG}.elf
 	JLinkGDBServer -device nRF51822_xxAA -if SWD
 
 gdb: ${PROG}.elf
-	${GDB} ${PROG}.elf -ex 'target remote :2331'
+	${GDB} ${PROG}.elf -ex 'target extended-remote :2331'
 
 GITREV= $(shell git describe --always)
 MAILFILE= ${PROG}-${GITREV}.hex
