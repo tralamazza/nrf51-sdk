@@ -24,7 +24,9 @@ CFLAGS+= -I${SDKDIR}/nordic/external/rtx/include
 LDLIBS+= ${SDKDIR}/nordic/external/rtx/source/GCC/libRTX_CM0.a
 endif
 
+ifeq ($(filter FALSE false NO no 0,${USE_SIMBLE}),)
 include ${SDKDIR}/relayr/src/build.mk
+endif
 
 CPPFLAGS+= $(patsubst %,-D%,${DEFINES})
 
