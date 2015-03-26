@@ -26,7 +26,7 @@ struct rtc_x {
 };
 
 struct rtc_ctx {
-	uint8_t used_timers;  //Max 4
+  uint8_t used_timers;  //Max 4
   struct rtc_x rtc_x[RTC_MAX_TIMERS];
 };
 
