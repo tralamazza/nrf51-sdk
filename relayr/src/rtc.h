@@ -30,9 +30,8 @@ struct rtc_ctx {
   struct rtc_x rtc_x[RTC_MAX_TIMERS];
 };
 
-void rtc_update_cfg(uint32_t value, uint8_t timer_id, bool enabled);
+void rtc_update_cfg(uint32_t time_ms, uint8_t timer_id, bool enabled);
 void rtc_init(struct rtc_ctx *ctx);
-void cfg_int_mask(uint8_t timer_id, bool enabled);
-bool rtc_oneshot_timer(uint32_t value, rtc_evt_cb_t *cb);
+bool rtc_oneshot_timer(uint32_t time_ms, rtc_evt_cb_t *cb);
 
 #endif
