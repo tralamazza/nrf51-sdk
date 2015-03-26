@@ -1,1 +1,1 @@
-GROUP(-lgcc -lc_s -lnosys)
+GROUP(-lgcc -lc_nano -lnosys)
