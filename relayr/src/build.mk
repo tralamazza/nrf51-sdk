@@ -10,6 +10,7 @@ SDKINCDIRS+= \
 	libraries/util
 
 SRCS+= \
+	${RELAYR_ROOT}/src/i2c.c \
 	${RELAYR_ROOT}/src/indicator.c \
 	${RELAYR_ROOT}/src/onboard-led.c \
 	${RELAYR_ROOT}/src/simble.c \

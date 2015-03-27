@@ -84,7 +84,7 @@ rtc_oneshot_timer(uint32_t time_ms, rtc_evt_cb_t *cb)
 }
 
 /* The RTC1 instance IRQ handler*/
-void
+__attribute__((weak)) void
 RTC1_IRQHandler(void)
 {
   for (uint8_t id = 0; id < ctx->used_timers; id++) {
