@@ -15,24 +15,6 @@ struct batt_serv_ctx {
 
 static struct batt_serv_ctx batt_serv_ctx;
 
-// void
-// ADC_IRQHandler(void)
-// {
-// 	if (NRF_ADC->EVENTS_END == 0) {
-// 		return;
-// 	}
-//
-// 	uint16_t    batt_lvl_in_milli_volts;
-//
-// 	NRF_ADC->EVENTS_END     = 0;
-// 	batt_serv_ctx.last_reading = NRF_ADC->RESULT;
-// 	NRF_ADC->TASKS_STOP     = 1;
-//
-// 	batt_lvl_in_milli_volts = ADC_RESULT_IN_MILLI_VOLTS(batt_serv_ctx.last_reading);
-// 	batt_serv_ctx.last_reading = battery_level_in_percent(batt_lvl_in_milli_volts);
-//
-// 	simble_srv_char_update(&batt_serv_ctx.batt_lvl, &batt_serv_ctx.last_reading);
-// }
 
 static void
 adc_config()
@@ -42,19 +24,6 @@ adc_config()
 			(ADC_CONFIG_REFSEL_VBG << ADC_CONFIG_REFSEL_Pos)  |
 			(ADC_CONFIG_PSEL_Disabled << ADC_CONFIG_PSEL_Pos)    |
 			(ADC_CONFIG_EXTREFSEL_None << ADC_CONFIG_EXTREFSEL_Pos);
-}
-
-static void
-adc_read_start()
-{
-	NRF_ADC->EVENTS_END = 0;
-	NRF_ADC->INTENSET = ADC_INTENSET_END_Msk;
-	sd_nvic_ClearPendingIRQ(ADC_IRQn);
-	sd_nvic_SetPriority(ADC_IRQn, NRF_APP_PRIORITY_LOW);
-	sd_nvic_EnableIRQ(ADC_IRQn);
-	adc_config();
-	NRF_ADC->ENABLE = ADC_ENABLE_ENABLE_Enabled;
-	NRF_ADC->TASKS_START = 1;
 }
 
 static uint16_t
@@ -72,7 +41,6 @@ adc_read_blocking()
 	while (NRF_ADC->EVENTS_END == 0) {
 		// __asm("nop");
 	}
-
 	NRF_ADC->EVENTS_END     = 0;
 	uint16_t    batt_lvl_in_milli_volts;
 	uint16_t result = NRF_ADC->RESULT;
@@ -83,21 +51,9 @@ adc_read_blocking()
 }
 
 static void
-batt_serv_connect_cb(struct service_desc *s)
-{
-  adc_read_start();
-}
-
-static void
-batt_serv_disconnect_cb(struct service_desc *s)
-{
-	//
-}
-
-static void
 batt_lvl_read_cb(struct service_desc *s, struct char_desc *c, void **val, uint16_t *len)
 {
-  struct batt_serv_ctx *ctx = (struct batt_serv_ctx *) s;
+        struct batt_serv_ctx *ctx = (struct batt_serv_ctx *) s;
 	ctx->last_reading = adc_read_blocking();
 	*val = &ctx->last_reading;
 	*len = 1;
@@ -116,11 +72,8 @@ batt_serv_init(void)
 		BLE_UUID_TYPE_BLE, BLE_UUID_BATTERY_LEVEL_CHAR,
 		u8"Battery Level",
 		1); // size in bytes
-  simble_srv_char_attach_format(&ctx->batt_lvl, BLE_GATT_CPF_FORMAT_UINT8,
-    0, ORG_BLUETOOTH_UNIT_PERCENTAGE);
-	// BLE callbacks (optional)
-  //	ctx->connect_cb = batt_serv_connect_cb;
-  //	ctx->disconnect_cb = batt_serv_disconnect_cb;
+        simble_srv_char_attach_format(&ctx->batt_lvl, BLE_GATT_CPF_FORMAT_UINT8,
+                0, ORG_BLUETOOTH_UNIT_PERCENTAGE);
 	ctx->batt_lvl.read_cb = batt_lvl_read_cb;
 	simble_srv_register(ctx); // register our service
 }
