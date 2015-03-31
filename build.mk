@@ -64,7 +64,7 @@ GENERATE.d=	$(CC) -MM ${CFLAGS} ${CPPFLAGS} -MT $@ -MT ${@:.d=.o} -MP -MF $@ $<
 COMPILE.s=	${COMPILE.S}
 
 
-all: ${PROG}.hex
+all: ${PROG}.hex ${PROG}.bin
 
 define compile_source
 ifneq ($(filter %.c %.S %.s,${1}),)
@@ -93,6 +93,9 @@ ${PROG}.elf: ${OBJS}
 
 %.hex: %.elf
 	${OBJCOPY} -O ihex $< $@
+
+%.bin: %.elf
+	${OBJCOPY} -O binary $< $@
 
 %.jlink: %.hex
 	${OBJDUMP} -h $< | \
