@@ -59,7 +59,7 @@ adc_read_blocking()
 }
 
 static void
-batt_lvl_disconnected()
+batt_serv_disconnected()
 {
         rtc_update_cfg(batt_serv_ctx.sampling_period, (uint8_t)NOTIF_TIMER_ID+3, false);
 }
@@ -137,7 +137,7 @@ batt_serv_init(struct rtc_ctx *rtc_ctx)
         	BLE_GATT_CPF_FORMAT_UINT24, 0, ORG_BLUETOOTH_UNIT_UNITLESS);
 
         ctx->batt_lvl.read_cb = batt_lvl_read_cb;
-        ctx->disconnect_cb = batt_lvl_disconnected;
+        ctx->disconnect_cb = batt_serv_disconnected;
         ctx->batt_lvl.notify = 1;
         ctx->batt_lvl.notify_status_cb = notify_status_cb;
         ctx->sampling_period_batt_lvl.read_cb = sampling_period_read_cb;
