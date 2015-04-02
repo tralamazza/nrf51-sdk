@@ -54,7 +54,6 @@ rtc_init(struct rtc_ctx *c)
     {
       // Config. CC[x] module to generate interrupts and events
       NRF_RTC1->CC[id] += ctx->rtc_x[id].period;
-      NRF_RTC1->EVTENSET = RTC_EVTENSET_COMPARE0_Msk << id;
       cfg_int_mask(id, ctx->rtc_x[id].enabled);
       ctx->used_timers++;
     }
@@ -88,7 +87,7 @@ rtc_oneshot_timer(uint32_t time_ms, rtc_evt_cb_t *cb)
 __attribute__((weak)) void
 RTC1_IRQHandler(void)
 {
-  for (uint8_t id = 0; id < ctx->used_timers; id++) {
+  for (uint8_t id = 0; id < RTC_MAX_TIMERS; id++) {
     if (NRF_RTC1->EVENTS_COMPARE[id] != 0)
     {
         // prepare the comparator for the next interval
