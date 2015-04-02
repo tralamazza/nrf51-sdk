@@ -1,4 +1,3 @@
-#include <twi_master.h>
 #include <nrf.h>
 #include "i2c.h"
 

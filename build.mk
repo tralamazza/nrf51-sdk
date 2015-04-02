@@ -1,7 +1,7 @@
 DEVICE_VARIANT?= xxaa
 
 DEFINES+= NRF51 NRF51822_QFAA_CA
-SDKINCDIRS+= toolchain toolchain/gcc drivers_nrf/hal drivers_nrf/twi_master device
+SDKINCDIRS+= toolchain toolchain/gcc drivers_nrf/hal device
 
 SDKSRCS+= toolchain/gcc/gcc_startup_nrf51.s toolchain/system_nrf51.c
 USE_SOFTDEVICE?= s110

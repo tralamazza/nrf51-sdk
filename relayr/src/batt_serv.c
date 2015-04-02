@@ -5,7 +5,7 @@
 #define DEFAULT_SAMPLING_PERIOD 1000UL
 #define MIN_SAMPLING_PERIOD 200UL
 
-#define NOTIF_TIMER_ID  0
+#define BATT_NOTIF_TIMER_ID  3
 
 #define ADC_REF_VOLTAGE_IN_MILLIVOLTS   1200                                        /**< Reference voltage (in milli volts) used by ADC while doing conversion. */
 #define ADC_PRE_SCALING_COMPENSATION    3                                           /**< The ADC is configured to use VDD with 1/3 prescaling as input. And hence the result of conversion is to be multiplied by 3 to get the actual value of the battery voltage.*/
@@ -61,7 +61,7 @@ adc_read_blocking()
 static void
 batt_serv_disconnected()
 {
-        rtc_update_cfg(batt_serv_ctx.sampling_period, (uint8_t)NOTIF_TIMER_ID+3, false);
+        rtc_update_cfg(batt_serv_ctx.sampling_period, (uint8_t)BATT_NOTIF_TIMER_ID, false);
 }
 
 static void
@@ -78,7 +78,7 @@ sampling_period_read_cb(struct service_desc *s, struct char_desc *c, void **valp
 {
 	struct batt_serv_ctx *ctx = (struct batt_serv_ctx *)s;
 	*valp = &ctx->sampling_period;
-	*lenp = sizeof(&ctx->sampling_period);
+	*lenp = sizeof(ctx->sampling_period);
 }
 
 static void
@@ -90,7 +90,7 @@ sampling_period_write_cb(struct service_desc *s, struct char_desc *c,
                 ctx->sampling_period = *(uint32_t*)val;
         else
                 ctx->sampling_period = MIN_SAMPLING_PERIOD;
-        rtc_update_cfg(ctx->sampling_period, (uint8_t)NOTIF_TIMER_ID+3, true);
+        rtc_update_cfg(ctx->sampling_period, (uint8_t)BATT_NOTIF_TIMER_ID, true);
 }
 
 void
@@ -99,55 +99,54 @@ notify_status_cb(struct service_desc *s, struct char_desc *c, const int8_t statu
         struct batt_serv_ctx *ctx = (struct batt_serv_ctx *)s;
 
         if (status & BLE_GATT_HVX_NOTIFICATION)
-                rtc_update_cfg(ctx->sampling_period, (uint8_t)NOTIF_TIMER_ID+3, true);
+                rtc_update_cfg(ctx->sampling_period, (uint8_t)BATT_NOTIF_TIMER_ID, true);
         else     //disable NOTIFICATION_TIMER
-                rtc_update_cfg(ctx->sampling_period, (uint8_t)NOTIF_TIMER_ID+3, false);
+                rtc_update_cfg(ctx->sampling_period, (uint8_t)BATT_NOTIF_TIMER_ID, false);
 }
 
 static void
 batt_lvl_notif_timer_cb(struct rtc_ctx *ctx)
 {
         void *val = &batt_serv_ctx.last_reading;
-	uint16_t len = sizeof(&batt_serv_ctx.last_reading);
+	uint16_t len = sizeof(batt_serv_ctx.last_reading);
 	batt_lvl_read_cb(&batt_serv_ctx, &batt_serv_ctx.batt_lvl, &val, &len);
-	simble_srv_char_notify(&batt_serv_ctx.batt_lvl, false, 1,
-                &batt_serv_ctx.last_reading);
+	simble_srv_char_notify(&batt_serv_ctx.batt_lvl, false, len, val);
 }
 
 void
 batt_serv_init(struct rtc_ctx *rtc_ctx)
 {
-	struct batt_serv_ctx *ctx = &batt_serv_ctx;
+        struct batt_serv_ctx *ctx = &batt_serv_ctx;
 
-	ctx->last_reading = 0;
-	// init the service context
-	simble_srv_init(ctx, BLE_UUID_TYPE_BLE, BLE_UUID_BATTERY_SERVICE);
-	// add a characteristic to our service
-	simble_srv_char_add(ctx, &ctx->batt_lvl, BLE_UUID_TYPE_BLE,
+        ctx->last_reading = 0;
+        // init the service context
+        simble_srv_init(ctx, BLE_UUID_TYPE_BLE, BLE_UUID_BATTERY_SERVICE);
+        // add a characteristic to our service
+        simble_srv_char_add(ctx, &ctx->batt_lvl, BLE_UUID_TYPE_BLE,
                 BLE_UUID_BATTERY_LEVEL_CHAR, u8"Battery Level", 1); // size in bytes
         simble_srv_char_attach_format(&ctx->batt_lvl, BLE_GATT_CPF_FORMAT_UINT8,
                 0, ORG_BLUETOOTH_UNIT_PERCENTAGE);
 
         simble_srv_char_add(ctx, &ctx->sampling_period_batt_lvl,
         	simble_get_vendor_uuid_class(), VENDOR_UUID_SAMPLING_PERIOD_CHAR,
-        	u8"sampling period", sizeof(&ctx->sampling_period)); // size in bytes
+        	u8"sampling period", sizeof(ctx->sampling_period)); // size in bytes
         // Resolution: 1ms, max value: 16777216 (4 hours)
         // A value of 0 will disable periodic notifications
         simble_srv_char_attach_format(&ctx->sampling_period_batt_lvl,
-        	BLE_GATT_CPF_FORMAT_UINT24, 0, ORG_BLUETOOTH_UNIT_UNITLESS);
+                BLE_GATT_CPF_FORMAT_UINT24, 0, ORG_BLUETOOTH_UNIT_UNITLESS);
 
         ctx->batt_lvl.read_cb = batt_lvl_read_cb;
         ctx->disconnect_cb = batt_serv_disconnected;
         ctx->batt_lvl.notify = 1;
         ctx->batt_lvl.notify_status_cb = notify_status_cb;
         ctx->sampling_period_batt_lvl.read_cb = sampling_period_read_cb;
-	ctx->sampling_period_batt_lvl.write_cb = sampling_period_write_cb;
+        ctx->sampling_period_batt_lvl.write_cb = sampling_period_write_cb;
 
         batt_serv_ctx.sampling_period = DEFAULT_SAMPLING_PERIOD;
-        rtc_ctx->rtc_x[NOTIF_TIMER_ID+3].type = PERIODIC;
-        rtc_ctx->rtc_x[NOTIF_TIMER_ID+3].period = batt_serv_ctx.sampling_period;
-        rtc_ctx->rtc_x[NOTIF_TIMER_ID+3].enabled = false;
-        rtc_ctx->rtc_x[NOTIF_TIMER_ID+3].cb = batt_lvl_notif_timer_cb;
+        rtc_ctx->rtc_x[BATT_NOTIF_TIMER_ID].type = PERIODIC;
+        rtc_ctx->rtc_x[BATT_NOTIF_TIMER_ID].period = batt_serv_ctx.sampling_period;
+        rtc_ctx->rtc_x[BATT_NOTIF_TIMER_ID].enabled = false;
+        rtc_ctx->rtc_x[BATT_NOTIF_TIMER_ID].cb = batt_lvl_notif_timer_cb;
 
         simble_srv_register(ctx); // register our service
 }
