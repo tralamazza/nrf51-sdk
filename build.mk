@@ -86,7 +86,7 @@ ifneq (${MAKECMDGOALS},clean)
 -include $(patsubst %.o,%.d,${OBJS})
 endif
 
-CLEANFILES+= ${OBJS} ${OBJS:.o=.d} ${PROG}.hex ${PROG}.elf ${PROG}.map ${PROG}.jlink ${PROG}-all.jlink
+CLEANFILES+= ${OBJS} ${OBJS:.o=.d} ${PROG}.hex ${PROG}.elf ${PROG}.bin ${PROG}.map ${PROG}.jlink ${PROG}-all.jlink
 
 ${PROG}.elf: ${OBJS}
 	${CC} -o $@ ${CFLAGS} ${LDFLAGS} ${OBJS} ${LDLIBS}
