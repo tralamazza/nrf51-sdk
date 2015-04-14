@@ -83,7 +83,7 @@ sampling_period_read_cb(struct service_desc *s, struct char_desc *c, void **valp
 
 static void
 sampling_period_write_cb(struct service_desc *s, struct char_desc *c,
-        const void *val, const uint16_t len)
+        const void *val, const uint16_t len, const uint16_t offset)
 {
 	struct batt_serv_ctx *ctx = (struct batt_serv_ctx *)s;
         if (*(uint32_t*)val > MIN_SAMPLING_PERIOD)
