@@ -36,7 +36,7 @@ CFLAGS+= -mcpu=cortex-m0 -mfloat-abi=soft -mthumb -mabi=aapcs	\
 	-ffunction-sections -fdata-sections -fno-builtin \
 	-fplan9-extensions
 CFLAGS+= -std=gnu11
-CFLAGS+= -Wall -Wno-main
+CFLAGS+= -Wall -Wno-main -Werror
 CFLAGS+= -g
 
 LINKERSCRIPT?= gcc_nrf51_${USE_SOFTDEVICE}_${DEVICE_VARIANT}.ld
