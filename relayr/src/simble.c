@@ -1,10 +1,15 @@
 #include <stdlib.h>
 #include <string.h>
 #include <app_util.h>
+#include <pstorage.h>
+#include <device_manager.h>
 
 #include "simble.h"
 #include "onboard-led.h"
+#include "app_trace.h"
 
+#define DFU_SERVICE_HANDLE 0x000C
+#define BLE_HANDLE_MAX 0xFFFF
 
 struct ble_gap_advdata {
         uint8_t length;
@@ -25,7 +30,6 @@ struct ble_gap_ad_name {
         struct ble_gap_ad_header;
         uint8_t name[BLE_GAP_DEVNAME_MAX_LEN];
 } __packed;
-
 
 
 static struct service_desc *services;
@@ -112,9 +116,44 @@ simble_srv_tx_init(void)
                                         &chr_handles);
 }
 
+static void
+sec_req_timeout_handler(uint8_t timer_id, void *data)
+{
+        if (current_conn_handle == BLE_CONN_HANDLE_INVALID)
+                return;
+        dm_handle_t* dmhandle = data;
+        dm_security_status_t status;
+        dm_security_status_req(dmhandle, &status);
+        if (status == NOT_ENCRYPTED)
+                dm_security_setup_req(dmhandle);
+}
+
+static ret_code_t
+device_manager_event_handler(dm_handle_t const *p_handle,
+        dm_event_t const *p_event, ret_code_t event_result)
+{
+        switch(p_event->event_id) {
+        case DM_EVT_CONNECTION:
+                // TODO execute sec_req_timeout_handler after ~500ms
+                break;
+        }
+        return NRF_SUCCESS;
+}
+
+/* DM requires a `app_error_handler` */
+void __attribute__((weak))
+app_error_handler(uint32_t error_code, uint32_t line_num, const uint8_t * p_file_name)
+{
+        app_trace_log("[simble]: err: %d, line: %d, file: %s\r\n", error_code, line_num, p_file_name);
+        for (;;) {
+                /* NOTHING */
+        }
+}
+
 void
 simble_init(const char *name)
 {
+        app_trace_init();
         sd_softdevice_enable(NRF_CLOCK_LFCLKSRC_XTAL_20_PPM, NULL); /* XXX assertion handler */
 
         ble_enable_params_t ble_params = {
@@ -132,6 +171,26 @@ simble_init(const char *name)
         ble_gap_conn_sec_mode_t mode;
         BLE_GAP_CONN_SEC_MODE_SET_NO_ACCESS(&mode);
         sd_ble_gap_device_name_set(&mode, (const uint8_t *)name, strlen(name));
+
+        // flash storage
+        pstorage_init();
+        // device manager
+        dm_init_param_t init_param;
+        init_param.clear_persistent_data = false;
+        dm_init(&init_param);
+        dm_application_param_t app_param;
+        memset(&app_param.sec_param, 0, sizeof(ble_gap_sec_params_t));
+        app_param.evt_handler = device_manager_event_handler;
+        app_param.service_type = DM_PROTOCOL_CNTXT_GATT_SRVR_ID;
+        app_param.sec_param.bond = 1; // bonding
+        app_param.sec_param.mitm = 0; // no mitm
+        app_param.sec_param.io_caps = BLE_GAP_IO_CAPS_NONE;
+        app_param.sec_param.oob = 0; // no oob
+        app_param.sec_param.min_key_size = 7; // enabled: 7..16, disabled: 0
+        app_param.sec_param.max_key_size = 16;
+        dm_application_instance_t app_id;
+        dm_register(&app_id, &app_param);
+
         simble_srv_tx_init();
 }
 
@@ -163,7 +222,7 @@ simble_srv_register(struct service_desc *s)
                 ble_gatts_attr_md_t cccd_md;
                 memset(&cccd_md, 0, sizeof(cccd_md));
                 BLE_GAP_CONN_SEC_MODE_SET_OPEN(&cccd_md.read_perm);
-                BLE_GAP_CONN_SEC_MODE_SET_OPEN(&cccd_md.write_perm);
+                BLE_GAP_CONN_SEC_MODE_SET_ENC_NO_MITM(&cccd_md.write_perm);
                 cccd_md.vloc = BLE_GATTS_VLOC_STACK;
                 int have_write = c->write_cb != NULL;
                 ble_gatts_char_md_t char_meta = {
@@ -187,10 +246,11 @@ simble_srv_register(struct service_desc *s)
                         .rd_auth = 1,
                         .wr_auth = 1,
                 };
-                BLE_GAP_CONN_SEC_MODE_SET_OPEN(&chr_attr_meta.read_perm);
-                BLE_GAP_CONN_SEC_MODE_SET_NO_ACCESS(&chr_attr_meta.write_perm);
+                BLE_GAP_CONN_SEC_MODE_SET_ENC_NO_MITM(&chr_attr_meta.read_perm);
                 if (have_write)
-                        BLE_GAP_CONN_SEC_MODE_SET_OPEN(&chr_attr_meta.write_perm);
+                        BLE_GAP_CONN_SEC_MODE_SET_ENC_NO_MITM(&chr_attr_meta.write_perm);
+                else
+                        BLE_GAP_CONN_SEC_MODE_SET_NO_ACCESS(&chr_attr_meta.write_perm);
 
                 ble_gatts_attr_t chr_attr = {
                         .p_uuid = &c->uuid,
@@ -319,44 +379,68 @@ srv_handle_ble_event(ble_evt_t *evt)
 {
         struct service_desc *s;
         struct char_desc *c;
+        app_trace_log("[simble]: BLE event %d\r\n", evt->header.evt_id);
         switch (evt->header.evt_id) {
         case BLE_GATTS_EVT_RW_AUTHORIZE_REQUEST: {
+                ble_gatts_evt_rw_authorize_request_t *auth_req = &evt->evt.gatts_evt.params.authorize_request;
+                if (auth_req->type == BLE_GATTS_AUTHORIZE_TYPE_INVALID)
+                        break;
                 ble_gatts_rw_authorize_reply_params_t auth_reply = {
-                        .type = evt->evt.gatts_evt.params.authorize_request.type,
+                        .type = auth_req->type,
                 };
                 if (auth_reply.type == BLE_GATTS_AUTHORIZE_TYPE_READ) {
-                        ble_gatts_attr_context_t *ctx = &evt->evt.gatts_evt.params.authorize_request.request.read.context;
+                        ble_gatts_attr_context_t *ctx = &auth_req->request.read.context;
                         s = srv_find_by_uuid(&ctx->srvc_uuid);
+                        if (s == NULL) break;
                         c = srv_find_char_by_uuid(s, &ctx->char_uuid);
+                        if (c == NULL) break;
                         auth_reply.params.read.gatt_status = BLE_GATT_STATUS_SUCCESS;
                         if (c->read_cb) {
                                 auth_reply.params.read.update = 1;
                                 c->read_cb(s, c, (void*)&auth_reply.params.read.p_data, &auth_reply.params.read.len);
                         }
-                } else {
+                } else { // BLE_GATTS_AUTHORIZE_TYPE_WRITE
+                        if (auth_req->request.write.op == BLE_GATTS_OP_PREP_WRITE_REQ) {
+                                s = srv_find_by_uuid(&auth_req->request.write.context.srvc_uuid);
+                                if (s == NULL) break;
+                                c = srv_find_char_by_uuid(s, &auth_req->request.write.context.char_uuid);
+                                if (c == NULL) break;
+                                if (c->write_cb)
+                                        c->write_cb(s, c, auth_req->request.write.data, auth_req->request.write.len, auth_req->request.write.offset);
+                        }
                         auth_reply.params.write.gatt_status = BLE_GATT_STATUS_SUCCESS;
                 }
                 sd_ble_gatts_rw_authorize_reply(evt->evt.gatts_evt.conn_handle, &auth_reply);
                 break;
         }
+        case BLE_EVT_USER_MEM_REQUEST:
+                sd_ble_user_mem_reply(current_conn_handle, NULL);
+                break;
         case BLE_GAP_EVT_CONNECTED:
                 current_conn_handle = evt->evt.gap_evt.conn_handle;
                 srv_foreach_srv(srv_notify_connect);
+                sd_ble_gatts_service_changed(current_conn_handle, DFU_SERVICE_HANDLE, BLE_HANDLE_MAX);
+                onboard_led(ONBOARD_LED_OFF);
                 break;
         case BLE_GAP_EVT_DISCONNECTED:
                 current_conn_handle = BLE_CONN_HANDLE_INVALID;
                 srv_foreach_srv(srv_notify_disconnect);
+                simble_adv_start();
                 break;
-        case BLE_GATTS_EVT_WRITE:
-                s = srv_find_by_uuid(&evt->evt.gatts_evt.params.write.context.srvc_uuid);
-                c = srv_find_char_by_uuid(s, &evt->evt.gatts_evt.params.write.context.char_uuid);
-                if (evt->evt.gatts_evt.params.write.handle == c->handles.cccd_handle) {
+        case BLE_GATTS_EVT_WRITE: {
+                ble_gatts_evt_write_t *write_evt = &evt->evt.gatts_evt.params.write;
+                s = srv_find_by_uuid(&write_evt->context.srvc_uuid);
+                if (s == NULL) break;
+                c = srv_find_char_by_uuid(s, &write_evt->context.char_uuid);
+                if (c == NULL) break;
+                if (write_evt->handle == c->handles.cccd_handle) {
                         if (c->notify_status_cb)
-                                c->notify_status_cb(s, c, uint16_decode(evt->evt.gatts_evt.params.write.data));
+                                c->notify_status_cb(s, c, uint16_decode(write_evt->data));
                 } else {
-                        c->write_cb(s, c, evt->evt.gatts_evt.params.write.data, evt->evt.gatts_evt.params.write.len);
+                        c->write_cb(s, c, write_evt->data, write_evt->len, write_evt->offset);
                 }
                 break;
+        }
         case BLE_GATTS_EVT_HVC:
                 s = services;
                 for (; s != NULL; s = s->next) {
@@ -377,42 +461,25 @@ srv_handle_ble_event(ble_evt_t *evt)
         }
 }
 
-static void
-simble_app_disconnected(void)
-{
-        simble_adv_start();
-}
-
 void
 simble_process_event_loop(void)
 {
+        union {
+                ble_evt_t evt;
+                uint8_t buffer[(BLE_EVTS_PTR_ALIGNMENT * CEIL_DIV(sizeof(ble_evt_t) + GATT_MTU_SIZE_DEFAULT, BLE_EVTS_PTR_ALIGNMENT))];
+        } ble_evt_buffer;
         for (;;) {
-                uint32_t r;
-                uint32_t evt;
-
-                sd_app_evt_wait();
-                r = sd_evt_get(&evt);
-
-                struct {
-                        ble_evt_t evt;
-                        uint8_t buf[GATT_MTU_SIZE_DEFAULT];
-                } evt_buf;
-                uint16_t len = sizeof(evt_buf);
-
-                sd_app_evt_wait();
-                r = sd_ble_evt_get((uint8_t *)&evt_buf, &len);
-                sd_nvic_ClearPendingIRQ(SWI2_IRQn);
-                if (r == NRF_SUCCESS) {
-                        srv_handle_ble_event(&evt_buf.evt);
-
-                        switch (evt_buf.evt.header.evt_id) {
-                        case BLE_GAP_EVT_CONNECTED:
-                                onboard_led(ONBOARD_LED_OFF);
-                                break;
-                        case BLE_GAP_EVT_DISCONNECTED:
-                                simble_app_disconnected();
-                                break;
-                        }
+                uint32_t evt_id;
+                while (sd_evt_get(&evt_id) == NRF_SUCCESS) {
+                        pstorage_sys_event_handler(evt_id);
                 }
+                uint16_t ble_evt_buffer_len = sizeof(ble_evt_buffer);
+                while (sd_ble_evt_get(ble_evt_buffer.buffer, &ble_evt_buffer_len) == NRF_SUCCESS) {
+                        dm_ble_evt_handler(&ble_evt_buffer.evt);
+                        srv_handle_ble_event(&ble_evt_buffer.evt);
+                        ble_evt_buffer_len = sizeof(ble_evt_buffer);
+                }
+                sd_app_evt_wait();
+                sd_nvic_ClearPendingIRQ(SD_EVT_IRQn);
         }
 }
