@@ -42,9 +42,6 @@ SRCS+= \
 SDKSRCS+= \
 	ble/ble_db_discovery/ble_db_discovery.c \
 	ble/device_manager/device_manager_central.c
-else
-SDKSRCS+= \
-	ble/device_manager/device_manager_peripheral.c
 endif
 
 DEFINES+= BLE_STACK_SUPPORT_REQD SOFTDEVICE_PRESENT __HEAP_SIZE=0

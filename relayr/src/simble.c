@@ -2,7 +2,6 @@
 #include <string.h>
 #include <app_util.h>
 #include <pstorage.h>
-#include <device_manager.h>
 
 #include "simble.h"
 #include "onboard-led.h"
@@ -116,30 +115,6 @@ simble_srv_tx_init(void)
                                         &chr_handles);
 }
 
-static void
-sec_req_timeout_handler(uint8_t timer_id, void *data)
-{
-        if (current_conn_handle == BLE_CONN_HANDLE_INVALID)
-                return;
-        dm_handle_t* dmhandle = data;
-        dm_security_status_t status;
-        dm_security_status_req(dmhandle, &status);
-        if (status == NOT_ENCRYPTED)
-                dm_security_setup_req(dmhandle);
-}
-
-static ret_code_t
-device_manager_event_handler(dm_handle_t const *p_handle,
-        dm_event_t const *p_event, ret_code_t event_result)
-{
-        switch(p_event->event_id) {
-        case DM_EVT_CONNECTION:
-                // TODO execute sec_req_timeout_handler after ~500ms
-                break;
-        }
-        return NRF_SUCCESS;
-}
-
 /* DM requires a `app_error_handler` */
 void __attribute__((weak))
 app_error_handler(uint32_t error_code, uint32_t line_num, const uint8_t * p_file_name)
@@ -174,22 +149,6 @@ simble_init(const char *name)
 
         // flash storage
         pstorage_init();
-        // device manager
-        dm_init_param_t init_param;
-        init_param.clear_persistent_data = false;
-        dm_init(&init_param);
-        dm_application_param_t app_param;
-        memset(&app_param.sec_param, 0, sizeof(ble_gap_sec_params_t));
-        app_param.evt_handler = device_manager_event_handler;
-        app_param.service_type = DM_PROTOCOL_CNTXT_GATT_SRVR_ID;
-        app_param.sec_param.bond = 1; // bonding
-        app_param.sec_param.mitm = 0; // no mitm
-        app_param.sec_param.io_caps = BLE_GAP_IO_CAPS_NONE;
-        app_param.sec_param.oob = 0; // no oob
-        app_param.sec_param.min_key_size = 7; // enabled: 7..16, disabled: 0
-        app_param.sec_param.max_key_size = 16;
-        dm_application_instance_t app_id;
-        dm_register(&app_id, &app_param);
 
         simble_srv_tx_init();
 }
@@ -222,7 +181,7 @@ simble_srv_register(struct service_desc *s)
                 ble_gatts_attr_md_t cccd_md;
                 memset(&cccd_md, 0, sizeof(cccd_md));
                 BLE_GAP_CONN_SEC_MODE_SET_OPEN(&cccd_md.read_perm);
-                BLE_GAP_CONN_SEC_MODE_SET_ENC_NO_MITM(&cccd_md.write_perm);
+                BLE_GAP_CONN_SEC_MODE_SET_OPEN(&cccd_md.write_perm);
                 cccd_md.vloc = BLE_GATTS_VLOC_STACK;
                 int have_write = c->write_cb != NULL;
                 ble_gatts_char_md_t char_meta = {
@@ -246,9 +205,9 @@ simble_srv_register(struct service_desc *s)
                         .rd_auth = 1,
                         .wr_auth = 1,
                 };
-                BLE_GAP_CONN_SEC_MODE_SET_ENC_NO_MITM(&chr_attr_meta.read_perm);
+                BLE_GAP_CONN_SEC_MODE_SET_OPEN(&chr_attr_meta.read_perm);
                 if (have_write)
-                        BLE_GAP_CONN_SEC_MODE_SET_ENC_NO_MITM(&chr_attr_meta.write_perm);
+                        BLE_GAP_CONN_SEC_MODE_SET_OPEN(&chr_attr_meta.write_perm);
                 else
                         BLE_GAP_CONN_SEC_MODE_SET_NO_ACCESS(&chr_attr_meta.write_perm);
 
@@ -475,7 +434,6 @@ simble_process_event_loop(void)
                 }
                 uint16_t ble_evt_buffer_len = sizeof(ble_evt_buffer);
                 while (sd_ble_evt_get(ble_evt_buffer.buffer, &ble_evt_buffer_len) == NRF_SUCCESS) {
-                        dm_ble_evt_handler(&ble_evt_buffer.evt);
                         srv_handle_ble_event(&ble_evt_buffer.evt);
                         ble_evt_buffer_len = sizeof(ble_evt_buffer);
                 }
