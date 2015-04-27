@@ -359,7 +359,8 @@ srv_handle_ble_event(ble_evt_t *evt)
                                 c->read_cb(s, c, (void*)&auth_reply.params.read.p_data, &auth_reply.params.read.len);
                         }
                 } else { // BLE_GATTS_AUTHORIZE_TYPE_WRITE
-                        if (auth_req->request.write.op == BLE_GATTS_OP_PREP_WRITE_REQ) {
+                        if ((auth_req->request.write.op == BLE_GATTS_OP_PREP_WRITE_REQ) ||
+                            (auth_req->request.write.op == BLE_GATTS_OP_WRITE_REQ)) {
                                 s = srv_find_by_uuid(&auth_req->request.write.context.srvc_uuid);
                                 if (s == NULL) break;
                                 c = srv_find_char_by_uuid(s, &auth_req->request.write.context.char_uuid);
