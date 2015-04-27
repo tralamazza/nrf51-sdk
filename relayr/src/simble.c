@@ -33,7 +33,7 @@ struct ble_gap_ad_name {
 
 static struct service_desc *services;
 static uint16_t current_conn_handle = BLE_CONN_HANDLE_INVALID;
-
+static process_event_loop_cb_t *event_loop_cb = NULL;
 
 static uint32_t
 simble_add_advdata(const struct ble_gap_ad_header *data, struct ble_gap_advdata *advdata)
@@ -429,6 +429,8 @@ simble_process_event_loop(void)
                 uint8_t buffer[(BLE_EVTS_PTR_ALIGNMENT * CEIL_DIV(sizeof(ble_evt_t) + GATT_MTU_SIZE_DEFAULT, BLE_EVTS_PTR_ALIGNMENT))];
         } ble_evt_buffer;
         for (;;) {
+                if (event_loop_cb)
+                        event_loop_cb();
                 uint32_t evt_id;
                 while (sd_evt_get(&evt_id) == NRF_SUCCESS) {
                         pstorage_sys_event_handler(evt_id);
@@ -441,4 +443,10 @@ simble_process_event_loop(void)
                 sd_app_evt_wait();
                 sd_nvic_ClearPendingIRQ(SD_EVT_IRQn);
         }
+}
+
+void
+simble_set_process_event_loop_cb(process_event_loop_cb_t *cb)
+{
+        event_loop_cb = cb;
 }

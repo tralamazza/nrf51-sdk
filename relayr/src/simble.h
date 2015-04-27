@@ -70,11 +70,13 @@ struct service_desc {
         struct char_desc chars[];
 };
 
+typedef void (process_event_loop_cb_t) (void);
 
 void simble_init(const char *name);
 void simble_adv_start(void);
 uint8_t simble_get_vendor_uuid_class(void);
 void simble_process_event_loop(void) __attribute__ ((noreturn));
+void simble_set_process_event_loop_cb(process_event_loop_cb_t*);
 
 void simble_srv_register(struct service_desc *s);
 void simble_srv_init(struct service_desc *s, uint8_t type, uint16_t id);
