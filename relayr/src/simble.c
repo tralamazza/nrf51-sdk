@@ -202,6 +202,7 @@ simble_srv_register(struct service_desc *s)
                         .p_cccd_md = (c->notify || c->indicate) ? &cccd_md : NULL,
                 };
                 ble_gatts_attr_md_t chr_attr_meta = {
+                        .vlen = 1,
                         .vloc = BLE_GATTS_VLOC_STACK,
                         .rd_auth = 1,
                         .wr_auth = 1,
