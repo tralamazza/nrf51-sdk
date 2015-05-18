@@ -32,7 +32,7 @@ struct char_desc;
 struct service_desc;
 
 typedef void (char_notify_status_cb_t)(struct service_desc *s, struct char_desc *c, const int8_t status);
-typedef void (char_indicated_cb_t)(struct service_desc *s, struct char_desc *c);
+typedef void (char_indicated_cb_t)(struct service_desc *s, struct char_desc *c, int success);
 typedef void (char_write_cb_t)(struct service_desc *s, struct char_desc *c, const void *val, const uint16_t len, const uint16_t offset);
 typedef void (char_read_cb_t)(struct service_desc *s, struct char_desc *c, void **val, uint16_t *len);
 typedef void (connect_cb_t)(struct service_desc *s);

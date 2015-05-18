@@ -32,8 +32,9 @@ struct ble_gap_ad_name {
 
 
 static struct service_desc *services;
-static uint16_t current_conn_handle = BLE_CONN_HANDLE_INVALID;
 static process_event_loop_cb_t *event_loop_cb = NULL;
+static uint16_t current_conn_handle = BLE_CONN_HANDLE_INVALID;
+static uint16_t outstanding_indicate_handle = BLE_GATT_HANDLE_INVALID;
 
 static uint32_t
 simble_add_advdata(const struct ble_gap_ad_header *data, struct ble_gap_advdata *advdata)
@@ -280,7 +281,13 @@ simble_srv_char_notify(struct char_desc *c, bool indicate, uint16_t length, void
                 .p_len = &length,
                 .p_data = val,
         };
-        return sd_ble_gatts_hvx(current_conn_handle, &hvx_params);
+
+        uint32_t success = sd_ble_gatts_hvx(current_conn_handle, &hvx_params);
+
+        if (indicate && success == NRF_SUCCESS)
+                outstanding_indicate_handle = hvx_params.handle;
+
+        return (success);
 }
 
 static struct char_desc *
@@ -399,8 +406,20 @@ srv_handle_ble_event(ble_evt_t *evt)
                 if (outstanding_indicate_handle == evt->evt.gatts_evt.params.hvc.handle)
                         outstanding_indicate_handle = BLE_GATT_HANDLE_INVALID;
                 if (c && c->indicated_cb)
-                        c->indicated_cb(s, c);
+                        c->indicated_cb(s, c, 1);
                 break;
+
+        case BLE_GATTS_EVT_TIMEOUT:
+                if (outstanding_indicate_handle == BLE_GATT_HANDLE_INVALID)
+                        break;
+                c = srv_find_char_by_handle(evt->evt.gatts_evt.params.hvc.handle, &s);
+                if (c == NULL)
+                        break;
+                outstanding_indicate_handle = BLE_GATT_HANDLE_INVALID;
+                if (c && c->indicated_cb)
+                        c->indicated_cb(s, c, 0);
+                break;
+
         case BLE_GATTS_EVT_SYS_ATTR_MISSING:
                 sd_ble_gatts_sys_attr_set(current_conn_handle, NULL, 0,
                         BLE_GATTS_SYS_ATTR_FLAG_SYS_SRVCS | BLE_GATTS_SYS_ATTR_FLAG_USR_SRVCS);
