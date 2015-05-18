@@ -283,28 +283,20 @@ simble_srv_char_notify(struct char_desc *c, bool indicate, uint16_t length, void
         return sd_ble_gatts_hvx(current_conn_handle, &hvx_params);
 }
 
-static struct service_desc *
-srv_find_by_uuid(ble_uuid_t *uuid)
-{
-        struct service_desc *s = services;
-
-        for (; s != NULL; s = s->next) {
-                if (memcmp(&s->uuid, uuid, sizeof(ble_uuid_t)) == 0)
-                        break;
-        }
-
-        return (s);
-}
-
 static struct char_desc *
-srv_find_char_by_uuid(struct service_desc *s, ble_uuid_t *uuid)
+srv_find_char_by_handle(uint16_t handle, struct service_desc **ps)
 {
-        struct char_desc *c = s->chars;
-
-        for (int i = 0; i < s->char_count; ++i, ++c) {
-                if (memcmp(&c->uuid, uuid, sizeof(ble_uuid_t)) == 0)
-                        return (c);
+        for (struct service_desc *s = services; s != NULL; s = s->next) {
+                struct char_desc *c = s->chars;
+                for (int i = 0; i < s->char_count; ++i, ++c) {
+                        if (c->handles.value_handle == handle) {
+                                if (ps)
+                                        *ps = s;
+                                return (c);
+                        }
+                }
         }
+
         return (NULL);
 }
 
@@ -339,33 +331,29 @@ srv_handle_ble_event(ble_evt_t *evt)
         struct service_desc *s;
         struct char_desc *c;
         app_trace_log("[simble]: BLE event %d\r\n", evt->header.evt_id);
+
         switch (evt->header.evt_id) {
         case BLE_GATTS_EVT_RW_AUTHORIZE_REQUEST: {
                 ble_gatts_evt_rw_authorize_request_t *auth_req = &evt->evt.gatts_evt.params.authorize_request;
-                if (auth_req->type == BLE_GATTS_AUTHORIZE_TYPE_INVALID)
-                        break;
                 ble_gatts_rw_authorize_reply_params_t auth_reply = {
                         .type = auth_req->type,
                 };
+
+                if (auth_req->type == BLE_GATTS_AUTHORIZE_TYPE_INVALID)
+                        break;
+
                 if (auth_reply.type == BLE_GATTS_AUTHORIZE_TYPE_READ) {
-                        ble_gatts_attr_context_t *ctx = &auth_req->request.read.context;
-                        s = srv_find_by_uuid(&ctx->srvc_uuid);
-                        if (s == NULL) break;
-                        c = srv_find_char_by_uuid(s, &ctx->char_uuid);
-                        if (c == NULL) break;
+                        c = srv_find_char_by_handle(auth_req->request.read.handle, &s);
                         auth_reply.params.read.gatt_status = BLE_GATT_STATUS_SUCCESS;
-                        if (c->read_cb) {
+                        if (c && c->read_cb) {
                                 auth_reply.params.read.update = 1;
                                 c->read_cb(s, c, (void*)&auth_reply.params.read.p_data, &auth_reply.params.read.len);
                         }
                 } else { // BLE_GATTS_AUTHORIZE_TYPE_WRITE
                         if ((auth_req->request.write.op == BLE_GATTS_OP_PREP_WRITE_REQ) ||
                             (auth_req->request.write.op == BLE_GATTS_OP_WRITE_REQ)) {
-                                s = srv_find_by_uuid(&auth_req->request.write.context.srvc_uuid);
-                                if (s == NULL) break;
-                                c = srv_find_char_by_uuid(s, &auth_req->request.write.context.char_uuid);
-                                if (c == NULL) break;
-                                if (c->write_cb)
+                                c = srv_find_char_by_handle(auth_req->request.write.handle, &s);
+                                if (c && c->write_cb)
                                         c->write_cb(s, c, auth_req->request.write.data, auth_req->request.write.len, auth_req->request.write.offset);
                         }
                         auth_reply.params.write.gatt_status = BLE_GATT_STATUS_SUCCESS;
@@ -373,26 +361,30 @@ srv_handle_ble_event(ble_evt_t *evt)
                 sd_ble_gatts_rw_authorize_reply(evt->evt.gatts_evt.conn_handle, &auth_reply);
                 break;
         }
+
         case BLE_EVT_USER_MEM_REQUEST:
                 sd_ble_user_mem_reply(current_conn_handle, NULL);
                 break;
+
         case BLE_GAP_EVT_CONNECTED:
                 current_conn_handle = evt->evt.gap_evt.conn_handle;
                 srv_foreach_srv(srv_notify_connect);
                 sd_ble_gatts_service_changed(current_conn_handle, DFU_SERVICE_HANDLE, BLE_HANDLE_MAX);
                 onboard_led(ONBOARD_LED_OFF);
                 break;
+
         case BLE_GAP_EVT_DISCONNECTED:
                 current_conn_handle = BLE_CONN_HANDLE_INVALID;
                 srv_foreach_srv(srv_notify_disconnect);
                 simble_adv_start();
                 break;
+
         case BLE_GATTS_EVT_WRITE: {
                 ble_gatts_evt_write_t *write_evt = &evt->evt.gatts_evt.params.write;
-                s = srv_find_by_uuid(&write_evt->context.srvc_uuid);
-                if (s == NULL) break;
-                c = srv_find_char_by_uuid(s, &write_evt->context.char_uuid);
-                if (c == NULL) break;
+                c = srv_find_char_by_handle(evt->evt.gatts_evt.params.write.handle, &s);
+                if (c == NULL)
+                        break;
+
                 if (write_evt->handle == c->handles.cccd_handle) {
                         if (c->notify_status_cb)
                                 c->notify_status_cb(s, c, uint16_decode(write_evt->data));
@@ -401,18 +393,13 @@ srv_handle_ble_event(ble_evt_t *evt)
                 }
                 break;
         }
+
         case BLE_GATTS_EVT_HVC:
-                s = services;
-                for (; s != NULL; s = s->next) {
-                        c = s->chars;
-                        for (int i = 0; i < s->char_count; ++i, ++c) {
-                                if (c->handles.value_handle == evt->evt.gatts_evt.params.hvc.handle) {
-                                        if (c->indicated_cb)
-                                                c->indicated_cb(s, c);
-                                        break;
-                                }
-                        }
-                }
+                c = srv_find_char_by_handle(evt->evt.gatts_evt.params.hvc.handle, &s);
+                if (outstanding_indicate_handle == evt->evt.gatts_evt.params.hvc.handle)
+                        outstanding_indicate_handle = BLE_GATT_HANDLE_INVALID;
+                if (c && c->indicated_cb)
+                        c->indicated_cb(s, c);
                 break;
         case BLE_GATTS_EVT_SYS_ATTR_MISSING:
                 sd_ble_gatts_sys_attr_set(current_conn_handle, NULL, 0,
