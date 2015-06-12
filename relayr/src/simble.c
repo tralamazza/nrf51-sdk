@@ -297,7 +297,8 @@ srv_find_char_by_handle(uint16_t handle, struct service_desc **ps)
         for (struct service_desc *s = services; s != NULL; s = s->next) {
                 struct char_desc *c = s->chars;
                 for (int i = 0; i < s->char_count; ++i, ++c) {
-                        if (c->handles.value_handle == handle) {
+                        if ((c->handles.value_handle == handle) ||
+                            (c->handles.cccd_handle == handle)) {
                                 if (ps)
                                         *ps = s;
                                 return (c);
