@@ -3,10 +3,12 @@
 #include <nrf_sdm.h>
 #include <pstorage.h>
 #include <ble_gap.h>
+#include <ble_srv_common.h>
 
 #include "simble_central.h"
 #include "app_trace.h"
 
+#define BLE_STARTING_HANDLE 0x0001
 
 static struct simble_central_ctx_t *global_ctx = NULL;
 
@@ -15,7 +17,7 @@ static struct simble_central_device_ctx_t*
 find_client_by_conn(struct simble_central_ctx_t *ctx, uint16_t handle)
 {
 	for (int i = 0; i < DEVICE_MANAGER_MAX_CONNECTIONS; i++) {
-		if (ctx->clients[i].db.conn_handle == handle) {
+		if (ctx->clients[i].conn_handle == handle) {
 			return &ctx->clients[i];
 		}
 	}
@@ -37,14 +39,10 @@ device_manager_event_handler(dm_handle_t const *p_handle,
 		}
 		global_ctx->client_count++;
 		client->dm_handle = *p_handle;
-		client->db.conn_handle = p_event->event_param.p_gap_param->conn_handle;
-		app_trace_log("[simble_central]: client %p ble_db_discovery_start %x %x\r\n",
-			client, client->dm_handle, client->db.conn_handle);
-		err_code = ble_db_discovery_start(&client->db, client->db.conn_handle);
-		APP_ERROR_CHECK(err_code);
+		client->conn_handle = p_event->event_param.p_gap_param->conn_handle;
 		break;
 	case DM_EVT_DISCONNECTION:
-		client->db.conn_handle = 0;
+		client->conn_handle = 0;
 		global_ctx->client_count--;
 		if (global_ctx->disconnect_cb) {
 			global_ctx->disconnect_cb(p_handle, p_event);
@@ -74,7 +72,7 @@ device_manager_event_handler(dm_handle_t const *p_handle,
 }
 
 static void
-simble_central_ble_event_handler(struct simble_central_ctx_t *ctx, ble_evt_t *evt, 
+simble_central_ble_event_handler(struct simble_central_ctx_t *ctx, ble_evt_t *evt,
 	struct simble_central_device_ctx_t *client)
 {
 	uint32_t err_code;
@@ -85,12 +83,6 @@ simble_central_ble_event_handler(struct simble_central_ctx_t *ctx, ble_evt_t *ev
 			err_code = dm_security_setup_req(&client->dm_handle);
 			APP_ERROR_CHECK(err_code);
 		}
-		break;
-	case BLE_GATTC_EVT_HVX: /* notification/indication */
-		break;
-	case BLE_GATTC_EVT_TIMEOUT:
-		break;
-	default:
 		break;
 	}
 }
@@ -115,11 +107,9 @@ simble_central_process_event_loop(struct simble_central_ctx_t *ctx)
 		while (sd_ble_evt_get(ble_evt_buffer.buffer, &ble_evt_buffer_len) == NRF_SUCCESS) {
 			dm_ble_evt_handler(&ble_evt_buffer.evt);
 			client = find_client_by_conn(ctx, ble_evt_buffer.evt.evt.gattc_evt.conn_handle);
-			if (client)
-				ble_db_discovery_on_ble_evt(&client->db, &ble_evt_buffer.evt);
 			simble_central_ble_event_handler(ctx, &ble_evt_buffer.evt, client);
 			if (ctx->ble_event_handler_cb) {
-				ctx->ble_event_handler_cb(ctx, &ble_evt_buffer.evt, client);
+				ctx->ble_event_handler_cb(ctx, &ble_evt_buffer.evt, ble_evt_buffer_len, client);
 			}
 			ble_evt_buffer_len = sizeof(ble_evt_buffer);
 		}
@@ -182,8 +172,6 @@ simble_central_init(const char *name, struct simble_central_ctx_t *ctx)
 	APP_ERROR_CHECK(err_code);
 	// DB discovery
 	memset(ctx->clients, 0, sizeof(ctx->clients));
-	err_code = ble_db_discovery_init();
-	APP_ERROR_CHECK(err_code);
 }
 
 uint32_t

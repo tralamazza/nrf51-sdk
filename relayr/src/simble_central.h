@@ -2,7 +2,6 @@
 
 #include <ble.h>
 #include <device_manager.h>
-#include <ble_db_discovery.h>
 
 enum BLE_GATT_HVX_TYPES {
 	BLE_GATT_HVX_TYPES_INVALID = BLE_GATT_HVX_INVALID,
@@ -13,7 +12,7 @@ enum BLE_GATT_HVX_TYPES {
 struct simble_central_ctx_t;
 
 struct simble_central_device_ctx_t {
-	ble_db_discovery_t db;
+	uint16_t conn_handle;
 	dm_handle_t dm_handle;
 };
 
@@ -21,8 +20,8 @@ typedef void (device_connect_cb_t) (dm_handle_t const *p_handle,
 	dm_event_t const *p_event);
 typedef void (device_disconnect_cb_t) (dm_handle_t const *p_handle,
 	dm_event_t const *p_event);
-typedef void (ble_event_handler_cb) (struct simble_central_ctx_t *ctx, ble_evt_t *evt,
-	struct simble_central_device_ctx_t *client);
+typedef void (ble_event_handler_cb_t) (struct simble_central_ctx_t *ctx, ble_evt_t *evt,
+	uint16_t evt_len, struct simble_central_device_ctx_t *client);
 typedef void (before_wait_cb_t) (struct simble_central_ctx_t *ctx);
 
 struct simble_central_ctx_t {
@@ -31,7 +30,7 @@ struct simble_central_ctx_t {
 	ble_gap_conn_params_t conn_params;
 	device_connect_cb_t *connect_cb;
 	device_disconnect_cb_t *disconnect_cb;
-	ble_event_handler_cb *ble_event_handler_cb;
+	ble_event_handler_cb_t *ble_event_handler_cb;
 	before_wait_cb_t *before_wait_cb;
 	dm_application_instance_t app_id;
 	uint8_t client_count;

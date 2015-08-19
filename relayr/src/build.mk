@@ -40,7 +40,6 @@ SRCS+= \
 	${RELAYR_ROOT}/src/simble_central.c
 
 SDKSRCS+= \
-	ble/ble_db_discovery/ble_db_discovery.c \
 	ble/device_manager/device_manager_central.c
 endif
 
